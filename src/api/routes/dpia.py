@@ -13,7 +13,10 @@ from datetime import datetime
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.responses import Response
 from langchain_community.llms import Ollama
+
+from src.core.pdf_report import generate_dpia_pdf
 
 from src.core.config import Settings, get_settings
 from src.core.prompts import DPIA_TEMPLATE, RISK_ASSESSMENT_TEMPLATE
@@ -176,6 +179,37 @@ async def generate_dpia(
         generated_at=datetime.utcnow(),
         model_used=settings.OLLAMA_MODEL,
         raw_llm_output=str(llm_output) if settings.DEBUG else None,
+    )
+
+
+@router.post(
+    "/generate/pdf",
+    summary="Gerar RIPD em PDF",
+    description="Gera o RIPD completo e retorna diretamente como arquivo PDF para download.",
+    response_class=Response,
+    responses={
+        200: {"content": {"application/pdf": {}}, "description": "PDF do RIPD"},
+        503: {"model": ErrorResponse, "description": "LLM service unavailable"},
+    },
+)
+async def generate_dpia_pdf_endpoint(
+    request: DPIARequest,
+    settings: Settings = Depends(get_settings),
+) -> Response:
+    """Generate a full DPIA report and return it as a downloadable PDF."""
+    # Reuse the JSON generation logic
+    dpia_response = await generate_dpia(request, settings)
+    dpia_dict = dpia_response.model_dump()
+
+    pdf_bytes = generate_dpia_pdf(dpia_dict)
+
+    company_slug = (request.company_name or "empresa").replace(" ", "_").lower()
+    filename = f"RIPD_{company_slug}_{datetime.utcnow().strftime('%Y%m%d')}.pdf"
+
+    return Response(
+        content=pdf_bytes,
+        media_type="application/pdf",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
     )
 
 

@@ -287,6 +287,34 @@ with tab2:
                 dpo = "✅ Sim" if r["dpo_required"] else "❌ Não obrigatório"
                 st.markdown(f"**👤 Encarregado (DPO) necessário:** {dpo}")
 
+            # Download PDF button
+            st.markdown("---")
+            if st.button("📄 Baixar RIPD em PDF", use_container_width=True):
+                with st.spinner("Gerando PDF..."):
+                    try:
+                        payload = {
+                            "company_name": dpia_company or "Empresa não informada",
+                            "treatment_description": dpia_purpose or dpia_process,
+                            "data_types": [d.strip() for d in (dpia_data or "").split(",") if d.strip()],
+                            "purposes": [dpia_purpose] if dpia_purpose else [],
+                        }
+                        pdf_resp = httpx.post(
+                            f"{API_BASE}/dpia/generate/pdf",
+                            json=payload,
+                            timeout=120,
+                        )
+                        if pdf_resp.status_code == 200:
+                            st.download_button(
+                                label="⬇️ Clique para baixar o PDF",
+                                data=pdf_resp.content,
+                                file_name=f"RIPD_{datetime.now().strftime('%Y%m%d')}.pdf",
+                                mime="application/pdf",
+                            )
+                        else:
+                            st.error(f"Erro ao gerar PDF: {pdf_resp.status_code}")
+                    except Exception as e:
+                        st.error(f"Erro: {e}")
+
             with st.expander("🔧 Resposta JSON completa"):
                 st.json(r)
 
