@@ -71,9 +71,11 @@ with st.sidebar:
     st.markdown("[GitHub](https://github.com/ldsjunior-ui/lgpd-sentinel-ai) | [Docs](/docs)")
 
 # ─── Abas principais ──────────────────────────────────────────────────────────
-tab1, tab2, tab3 = st.tabs([
+tab1, tab2, tab3, tab4, tab5 = st.tabs([
     "📊 Mapeamento de Dados",
     "🔍 DPIA / Avaliação de Impacto",
+    "📝 Direitos do Titular (DSR)",
+    "📂 Histórico",
     "📋 Sobre a LGPD"
 ])
 
@@ -320,9 +322,213 @@ with tab2:
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# TAB 3 — SOBRE A LGPD
+# TAB 3 — DSR (Direitos do Titular)
 # ═══════════════════════════════════════════════════════════════════════════════
 with tab3:
+    st.header("📝 Direitos do Titular — Art. 18 LGPD")
+    st.markdown(
+        "Analise solicitações de direitos de titulares de dados: acesso, correção, "
+        "exclusão, portabilidade e outros. Gere orientações e a resposta formal ao titular."
+    )
+
+    # Buscar tipos disponíveis
+    try:
+        tipos_resp = httpx.get(f"{API_BASE}/dsr/types", timeout=5)
+        tipos_data = tipos_resp.json() if tipos_resp.status_code == 200 else {}
+        tipos_disponiveis = {d["type"]: d["descricao"] for d in tipos_data.get("direitos", [])}
+    except Exception:
+        tipos_disponiveis = {
+            "acesso": "Confirmação e acesso aos dados tratados",
+            "correcao": "Correção de dados incompletos ou inexatos",
+            "exclusao": "Eliminação de dados desnecessários",
+            "portabilidade": "Portabilidade dos dados",
+            "oposicao": "Oposição ao tratamento",
+            "revogacao_consentimento": "Revogação do consentimento",
+            "restricao": "Restrição do tratamento",
+            "informacao": "Informação sobre compartilhamento",
+        }
+
+    col1, col2 = st.columns([1, 1])
+
+    with col1:
+        st.subheader("📋 Dados da solicitação")
+        dsr_company  = st.text_input("Empresa controladora", placeholder="Acme Ltda", key="dsr_company")
+        dsr_titular  = st.text_input("Nome do titular (opcional)", placeholder="ex: Titular #1234", key="dsr_titular")
+        dsr_type     = st.selectbox(
+            "Tipo de direito solicitado",
+            options=list(tipos_disponiveis.keys()),
+            format_func=lambda x: f"{x.replace('_', ' ').title()} — {tipos_disponiveis.get(x, '')}",
+            key="dsr_type",
+        )
+        dsr_desc     = st.text_area(
+            "Descrição da solicitação",
+            placeholder="Ex: Solicito acesso a todos os meus dados pessoais armazenados pela empresa...",
+            height=100, key="dsr_desc",
+        )
+        dsr_context  = st.text_area(
+            "Contexto dos dados (opcional)",
+            placeholder="Ex: Dados cadastrais do sistema CRM, histórico de compras...",
+            height=70, key="dsr_context",
+        )
+
+        st.info(f"⏱️ Prazo legal: **15 dias** (Art. 18, §5 LGPD)")
+
+    with col2:
+        st.subheader("📄 Análise e orientações")
+
+        if st.button("🚀 Analisar Solicitação", type="primary", use_container_width=True):
+            if not dsr_desc or len(dsr_desc) < 10:
+                st.error("Descreva a solicitação com pelo menos 10 caracteres.")
+            else:
+                payload = {
+                    "company_name": dsr_company or "Empresa não informada",
+                    "request_type": dsr_type,
+                    "request_description": dsr_desc,
+                    "data_context": dsr_context or None,
+                    "titular_name": dsr_titular or None,
+                }
+                with st.spinner("🤖 Analisando com IA local..."):
+                    try:
+                        resp = httpx.post(
+                            f"{API_BASE}/dsr/analyze",
+                            json=payload,
+                            timeout=120,
+                        )
+                        if resp.status_code == 200:
+                            st.session_state["dsr_result"] = resp.json()
+                            st.success("✅ Análise concluída!")
+                        else:
+                            st.error(f"Erro {resp.status_code}: {resp.text}")
+                    except httpx.ConnectError:
+                        st.error("❌ API offline.")
+                    except Exception as e:
+                        st.error(f"Erro: {e}")
+
+        if "dsr_result" in st.session_state:
+            r = st.session_state["dsr_result"]
+
+            # Status pode atender
+            pode = r.get("pode_atender", True)
+            if pode:
+                st.success(f"✅ Solicitação pode ser **atendida**")
+            else:
+                st.error(f"❌ Solicitação **não pode ser atendida**")
+
+            st.markdown(f"**Base legal:** {r.get('artigo_lgpd', 'N/A')}")
+            st.markdown(f"**Justificativa:** {r.get('justificativa', '')}")
+            st.markdown(f"**Prazo:** {r.get('prazo_resposta_dias', 15)} dias")
+
+            # Flags importantes
+            c1, c2 = st.columns(2)
+            c1.metric("DPO necessário", "✅ Sim" if r.get("requer_dpo") else "❌ Não")
+            c2.metric("Notificar ANPD", "✅ Sim" if r.get("requer_anpd") else "❌ Não")
+
+            # Ações requeridas
+            acoes = r.get("acoes_requeridas", [])
+            if acoes:
+                st.markdown("### 📋 Ações requeridas")
+                for a in acoes:
+                    prazo_label = a.get("prazo", "")
+                    responsavel = a.get("responsavel", "")
+                    st.markdown(
+                        f"- **{a.get('acao', '')}**  \n"
+                        f"  Responsável: `{responsavel}` | Prazo: `{prazo_label}`"
+                    )
+
+            # Resposta ao titular
+            resposta = r.get("resposta_ao_titular", "")
+            if resposta:
+                st.markdown("### ✉️ Resposta ao titular")
+                st.text_area(
+                    "Texto pronto para envio:",
+                    value=resposta,
+                    height=160,
+                    key="resposta_titular_text",
+                )
+
+            # Documentos necessários
+            docs = r.get("documentacao_necessaria", [])
+            if docs:
+                st.markdown("### 🗂️ Documentação necessária")
+                for d in docs:
+                    st.markdown(f"- {d}")
+
+            with st.expander("🔧 Resposta JSON completa"):
+                st.json(r)
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# TAB 4 — HISTÓRICO
+# ═══════════════════════════════════════════════════════════════════════════════
+with tab4:
+    st.header("📂 Histórico de Auditorias")
+
+    h_col1, h_col2 = st.columns(2)
+
+    with h_col1:
+        st.subheader("📊 Mapeamentos")
+        if st.button("🔄 Atualizar", key="refresh_mapping"):
+            st.session_state.pop("hist_mapping", None)
+
+        if "hist_mapping" not in st.session_state:
+            try:
+                r = httpx.get(f"{API_BASE}/history/mapping", timeout=5)
+                st.session_state["hist_mapping"] = r.json() if r.status_code == 200 else []
+            except Exception:
+                st.session_state["hist_mapping"] = []
+
+        audits = st.session_state.get("hist_mapping", [])
+        if not audits:
+            st.info("Nenhuma auditoria de mapeamento encontrada.")
+        else:
+            for a in audits:
+                with st.expander(f"#{a['id']} — {a.get('company', 'N/A')} ({a.get('created_at', '')[:10]})"):
+                    st.write(f"**Contexto:** {a.get('context', 'N/A')}")
+                    if st.button(f"Ver detalhes #{a['id']}", key=f"map_detail_{a['id']}"):
+                        try:
+                            dr = httpx.get(f"{API_BASE}/history/mapping/{a['id']}", timeout=5)
+                            if dr.status_code == 200:
+                                st.json(dr.json())
+                        except Exception as e:
+                            st.error(str(e))
+
+    with h_col2:
+        st.subheader("🔍 DPIAs")
+        if st.button("🔄 Atualizar", key="refresh_dpia"):
+            st.session_state.pop("hist_dpia", None)
+
+        if "hist_dpia" not in st.session_state:
+            try:
+                r = httpx.get(f"{API_BASE}/history/dpia", timeout=5)
+                st.session_state["hist_dpia"] = r.json() if r.status_code == 200 else []
+            except Exception:
+                st.session_state["hist_dpia"] = []
+
+        dpia_audits = st.session_state.get("hist_dpia", [])
+        if not dpia_audits:
+            st.info("Nenhuma auditoria DPIA encontrada.")
+        else:
+            for a in dpia_audits:
+                risk = a.get("risk_level", "N/A")
+                risk_emoji = {"high": "🔴", "medium": "🟡", "low": "🟢"}.get(risk, "⚪")
+                with st.expander(
+                    f"#{a['id']} — {a.get('company', 'N/A')} {risk_emoji} ({a.get('created_at', '')[:10]})"
+                ):
+                    st.write(f"**Tratamento:** {a.get('treatment', 'N/A')}")
+                    st.write(f"**Risco:** {risk.upper()} | **Conformidade:** {a.get('compliance_score', 0):.0f}/100")
+                    if st.button(f"Ver detalhes #{a['id']}", key=f"dpia_detail_{a['id']}"):
+                        try:
+                            dr = httpx.get(f"{API_BASE}/history/dpia/{a['id']}", timeout=5)
+                            if dr.status_code == 200:
+                                st.json(dr.json())
+                        except Exception as e:
+                            st.error(str(e))
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# TAB 5 — SOBRE A LGPD
+# ═══════════════════════════════════════════════════════════════════════════════
+with tab5:
     st.header("📋 Sobre a LGPD")
 
     col1, col2 = st.columns(2)
