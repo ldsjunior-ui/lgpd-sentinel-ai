@@ -26,18 +26,8 @@ async def client():
 def sample_data_items():
     """Sample data items for testing data mapping."""
     return [
-        {
-            "field_name": "email",
-            "field_type": "string",
-            "description": "Email do usuario",
-            "sample_value": "usuario@exemplo.com.br",
-        },
-        {
-            "field_name": "cpf",
-            "field_type": "string",
-            "description": "CPF do cliente",
-            "sample_value": "123.456.789-00",
-        },
+        {"key": "email", "value": "usuario@exemplo.com.br"},
+        {"key": "cpf", "value": "123.456.789-00"},
     ]
 
 

@@ -1,0 +1,60 @@
+version: "3.8"
+
+services:
+  # API FastAPI
+  api:
+    build: .
+    container_name: lgpd-sentinel-api
+    ports:
+      - "8000:8000"
+    environment:
+      - OLLAMA_BASE_URL=http://ollama:11434
+      - OLLAMA_MODEL=mistral
+      - DEBUG=false
+      - LOG_LEVEL=INFO
+    env_file:
+      - .env
+    volumes:
+      - ./src:/app/src
+      - reports_data:/app/reports
+    depends_on:
+      ollama:
+        condition: service_started
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+
+  # Ollama - LLM local gratuito
+  ollama:
+    image: ollama/ollama:latest
+    container_name: lgpd-sentinel-ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:11434/api/tags"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+
+  # Setup: baixa o modelo Mistral automaticamente
+  ollama-setup:
+    image: curlimages/curl:latest
+    container_name: lgpd-sentinel-ollama-setup
+    depends_on:
+      ollama:
+        condition: service_healthy
+    entrypoint: >
+      sh -c "curl -s http://ollama:11434/api/pull -d '{\"name\": \"mistral\"}' && echo 'Modelo mistral baixado com sucesso'"
+    restart: "no"
+
+volumes:
+  ollama_data:
+  reports_data:

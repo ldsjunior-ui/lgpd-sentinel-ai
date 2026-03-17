@@ -26,27 +26,12 @@ from src.models.schemas import LGPDCategory, RiskLevel
 def sample_mapping_payload():
     """Valid data mapping request payload."""
     return {
-        "data_items": [
-            {
-                "field_name": "cpf",
-                "field_type": "string",
-                "description": "CPF do usuario",
-                "sample_value": "123.456.789-00",
-            },
-            {
-                "field_name": "nome_completo",
-                "field_type": "string",
-                "description": "Nome completo do usuario",
-                "sample_value": "Joao Silva",
-            },
-            {
-                "field_name": "diagnostico_medico",
-                "field_type": "string",
-                "description": "Diagnostico medico do paciente",
-                "sample_value": "Hipertensao",
-            },
+        "data": [
+            {"key": "cpf", "value": "123.456.789-00"},
+            {"key": "nome_completo", "value": "Joao Silva"},
+            {"key": "diagnostico_medico", "value": "Hipertensao"},
         ],
-        "company_context": "Startup de telemedicina brasileira",
+        "context": "Startup de telemedicina brasileira",
     }
 
 
@@ -65,7 +50,7 @@ def mock_ollama_response():
                 "requer_consentimento_explicito": false,
                 "periodo_retencao": "5 anos apos encerramento da relacao",
                 "medidas_seguranca": ["criptografia", "controle_de_acesso"],
-                "observacoes": "CPF e dado de identificacao unica - requer protecao especial"
+                "observacoes": "CPF e dado de identificacao unica"
             },
             {
                 "campo": "nome_completo",
@@ -94,10 +79,10 @@ def mock_ollama_response():
             "total_campos": 3,
             "campos_sensiveis": 1,
             "risco_geral": "alto",
+            "score_conformidade": 65,
             "recomendacoes_principais": [
                 "Implementar criptografia AES-256 para dados de saude",
-                "Obter consentimento explicito para diagnosticos medicos",
-                "Registrar todas as operacoes de acesso a dados de saude"
+                "Obter consentimento explicito para diagnosticos medicos"
             ]
         }
     }
@@ -125,14 +110,12 @@ async def test_map_data_success(sample_mapping_payload, mock_ollama_response):
     assert response.status_code == status.HTTP_200_OK
     data = response.json()
 
-    # Verify response structure
-    assert "mapped_fields" in data
-    assert "risk_summary" in data
+    assert "mapped_data" in data
+    assert "compliance_score" in data
     assert "recommendations" in data
-    assert "total_fields" in data
-
-    # Verify field count
-    assert data["total_fields"] == 3
+    assert "total_personal_data" in data
+    assert "total_sensitive_data" in data
+    assert len(data["mapped_data"]) == 3
 
 
 @pytest.mark.asyncio
@@ -151,25 +134,22 @@ async def test_map_data_identifies_sensitive_data(sample_mapping_payload, mock_o
     assert response.status_code == status.HTTP_200_OK
     data = response.json()
 
-    # Find the diagnostico_medico field
-    mapped_fields = data.get("mapped_fields", [])
     health_field = next(
-        (f for f in mapped_fields if f.get("field_name") == "diagnostico_medico"),
+        (f for f in data["mapped_data"] if f["key"] == "diagnostico_medico"),
         None,
     )
-
-    if health_field:
-        assert health_field.get("lgpd_category") == LGPDCategory.SENSITIVE.value
-        assert health_field.get("requires_explicit_consent") is True
+    assert health_field is not None
+    assert health_field["sensitive"] is True
+    assert health_field["lgpd_category"] == LGPDCategory.SENSITIVE.value
 
 
 @pytest.mark.asyncio
 async def test_map_data_empty_payload():
-    """Test that empty data_items returns 422 validation error."""
+    """Test that empty data returns 422 validation error."""
     async with AsyncClient(app=app, base_url="http://test") as client:
         response = await client.post(
             "/api/v1/map-data",
-            json={"data_items": [], "company_context": "test"},
+            json={"data": [], "context": "test"},
         )
 
     assert response.status_code == status.HTTP_422_UNPROCESSABLE_ENTITY
@@ -208,8 +188,10 @@ async def test_map_data_fallback_classifier(sample_mapping_payload):
                 json=sample_mapping_payload,
             )
 
-    # Should fall back to regex classifier and still return 200
-    assert response.status_code in [status.HTTP_200_OK, status.HTTP_503_SERVICE_UNAVAILABLE]
+    # Should fall back to regex classifier and return 200
+    assert response.status_code == status.HTTP_200_OK
+    data = response.json()
+    assert data["compliance_score"] == 60.0
 
 
 # ---------------------------------------------------------------------------

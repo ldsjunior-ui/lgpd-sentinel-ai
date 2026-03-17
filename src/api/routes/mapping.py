@@ -1,253 +1,244 @@
 # LGPD Sentinel AI - Endpoint de Data Mapping
 # Identifica dados pessoais usando LangChain + Ollama (gratuito e local)
-# Sem APIs pagas, sem GPU obrigatória
 # Apache 2.0
 
 import json
+import logging
 import re
-from fastapi import APIRouter, HTTPException, UploadFile, File
-from fastapi.responses import JSONResponse
+from typing import Any
+
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, status
 import pandas as pd
 from io import StringIO
 
 from langchain_community.llms import Ollama
-from langchain.prompts import PromptTemplate
-from langchain.chains import LLMChain
 
+from src.core.config import Settings, get_settings
+from src.core.prompts import DATA_MAPPING_TEMPLATE
 from src.models.schemas import (
     DataMappingRequest,
     DataMappingResponse,
     DataItem,
     LGPDCategory,
-    RiskLevel
 )
 
-# Router para o módulo de data mapping
+logger = logging.getLogger(__name__)
+
 router = APIRouter()
 
-# URL do Ollama (local via Docker, gratuito)
-OLLAMA_BASE_URL = "http://localhost:11434"
-OLLAMA_MODEL = "mistral"  # Modelo gratuito e eficiente
 
-# Prompt especializado em LGPD para classificação de dados
-LGPD_MAPPING_PROMPT = PromptTemplate(
-    input_variables=["data_items", "context"],
-    template="""Você é um especialista em LGPD (Lei Geral de Proteção de Dados do Brasil).
-    
-Analise os seguintes dados e classifique cada um conforme a LGPD:
-
-DADOS PARA ANÁLISE:
-{data_items}
-
-CONTEXTO DO TRATAMENTO: {context}
-
-Para cada item, determine:
-1. Se é dado pessoal (LGPD Art. 5, I)
-2. Se é dado sensível (LGPD Art. 5, II): origem racial/étnica, convicção religiosa, 
-   opinião política, filiação sindical, saúde, vida sexual, genético, biométrico
-3. A base legal apropriada (Art. 7 para pessoal, Art. 11 para sensível)
-4. Nível de risco: baixo, medio, alto, critico
-
-Responda em JSON com o formato:
-{{
-  "classificacoes": [
-    {{
-      "key": "nome_do_campo",
-      "is_personal": true/false,
-      "is_sensitive": true/false,
-      "lgpd_category": "dado_pessoal|dado_sensivel|dado_anonimizado|nao_classificado",
-      "risk_level": "baixo|medio|alto|critico",
-      "legal_basis": "descrição da base legal"
-    }}
-  ],
-  "compliance_score": 0-100,
-  "recommendations": ["recomendação 1", "recomendação 2"]
-}}
-
-Responda APENAS com o JSON, sem texto adicional."""
-)
-
-
-def get_llm():
-    """Inicializa o modelo Ollama local (gratuito)."""
+def _extract_json(text: str) -> dict[str, Any]:
+    """Extract JSON from LLM output that may contain extra text."""
+    text = text.strip()
     try:
-        return Ollama(
-            base_url=OLLAMA_BASE_URL,
-            model=OLLAMA_MODEL,
-            temperature=0.1  # Baixa temperatura para respostas mais precisas
-        )
-    except Exception as e:
-        raise HTTPException(
-            status_code=503,
-            detail=f"Ollama não está disponível. Execute: docker exec lgpd-sentinel-ollama ollama pull {OLLAMA_MODEL}. Erro: {str(e)}"
-        )
+        return json.loads(text)
+    except json.JSONDecodeError:
+        pass
+
+    match = re.search(r"\{[\s\S]+\}", text)
+    if match:
+        try:
+            return json.loads(match.group())
+        except json.JSONDecodeError:
+            pass
+
+    return {}
 
 
 @router.post(
     "/map-data",
     response_model=DataMappingResponse,
     summary="Mapear dados pessoais conforme LGPD",
-    description="""
-    Analisa uma lista de dados e classifica cada item conforme a LGPD usando IA (Mistral via Ollama).
-    
-    - Identifica dados pessoais (Art. 5, I)
-    - Identifica dados sensíveis (Art. 5, II)  
-    - Sugere bases legais (Art. 7 e 11)
-    - Calcula score de conformidade
-    - Gera recomendações de melhoria
-    
-    **Gratuito**: usa Ollama local, sem chamadas a APIs externas pagas.
-    """
+    description=(
+        "Analisa uma lista de dados e classifica cada item conforme a LGPD usando IA "
+        "(Mistral via Ollama). Identifica dados pessoais (Art. 5, I), dados sensiveis "
+        "(Art. 5, II), sugere bases legais e calcula score de conformidade."
+    ),
 )
-async def map_data(request: DataMappingRequest):
-    """
-    Endpoint principal de data mapping LGPD.
-    Usa LangChain + Ollama (Mistral) para análise com IA local.
-    """
-    # Preparar dados para o prompt
-    data_items_str = "\n".join([
-        f"- {item.key}: {item.value}"
-        for item in request.data
-    ])
-    
-    context = request.context or "não especificado"
-    
-    # Chamar LLM local (Ollama, gratuito)
-    llm = get_llm()
-    chain = LLMChain(llm=llm, prompt=LGPD_MAPPING_PROMPT)
-    
+async def map_data(
+    request: DataMappingRequest,
+    settings: Settings = Depends(get_settings),
+):
+    """Endpoint principal de data mapping LGPD."""
+    data_items_str = "\n".join(
+        f"- {item.key}: {item.value}" for item in request.data
+    )
+    context = request.context or "nao especificado"
+
     try:
-        result = await chain.arun(
+        llm = Ollama(
+            base_url=settings.OLLAMA_BASE_URL,
+            model=settings.OLLAMA_MODEL,
+            temperature=settings.LLM_TEMPERATURE,
+        )
+        prompt = DATA_MAPPING_TEMPLATE.format(
             data_items=data_items_str,
-            context=context
+            company_context=context,
         )
-    except Exception as e:
+        result = await llm.ainvoke(prompt)
+    except Exception as exc:
         raise HTTPException(
-            status_code=500,
-            detail=f"Erro na análise IA: {str(e)}"
-        )
-    
-    # Parsear resposta JSON do LLM
-    try:
-        # Extrair JSON da resposta (LLM pode adicionar texto extra)
-        json_match = re.search(r'\{.*\}', result, re.DOTALL)
-        if not json_match:
-            raise ValueError("LLM não retornou JSON válido")
-        
-        analysis = json.loads(json_match.group())
-        classificacoes = analysis.get("classificacoes", [])
-        compliance_score = float(analysis.get("compliance_score", 50))
-        recommendations = analysis.get("recommendations", [])
-        
-    except (json.JSONDecodeError, ValueError):
-        # Fallback: classificação básica por regex se LLM falhar
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=f"Ollama nao disponivel: {exc}. Execute: ollama pull {settings.OLLAMA_MODEL}",
+        ) from exc
+
+    # Parse LLM JSON output
+    analysis = _extract_json(str(result))
+    classificacoes = analysis.get("mapeamento", analysis.get("classificacoes", []))
+
+    if not classificacoes:
+        # Fallback: regex classification when LLM output is unparseable
         classificacoes = _classify_by_regex(request.data)
         compliance_score = 60.0
         recommendations = [
-            "Execute o audit completo com Ollama para análise mais precisa",
-            "Verifique se todos os dados têm base legal documentada"
+            "Execute o audit completo com Ollama para analise mais precisa",
+            "Verifique se todos os dados tem base legal documentada",
         ]
-    
-    # Construir resposta
+    else:
+        resumo = analysis.get("resumo", {})
+        compliance_score = float(resumo.get("score_conformidade", 50))
+        recommendations = resumo.get(
+            "recomendacoes_principais",
+            analysis.get("recommendations", []),
+        )
+
+    # Build response
     mapped_items = []
     for item in request.data:
         classificacao = next(
-            (c for c in classificacoes if c.get("key") == item.key),
-            {"is_sensitive": False, "lgpd_category": "nao_classificado", "legal_basis": None}
-        )
-        
-        mapped_items.append(DataItem(
-            key=item.key,
-            value=item.value,
-            sensitive=classificacao.get("is_sensitive", False),
-            lgpd_category=LGPDCategory(
-                classificacao.get("lgpd_category", "nao_classificado")
+            (
+                c
+                for c in classificacoes
+                if c.get("key") == item.key or c.get("campo") == item.key
             ),
-            legal_basis=classificacao.get("legal_basis")
-        ))
-    
-    total_personal = sum(1 for i in mapped_items if i.lgpd_category != LGPDCategory.NAO_CLASSIFICADO)
+            {
+                "is_sensitive": False,
+                "lgpd_category": "nao_classificado",
+                "categoria_lgpd": "nao_classificado",
+                "legal_basis": None,
+            },
+        )
+
+        is_sensitive = classificacao.get("is_sensitive", False) or classificacao.get(
+            "categoria_lgpd", ""
+        ) == "dado_sensivel"
+
+        category_value = classificacao.get(
+            "lgpd_category",
+            classificacao.get("categoria_lgpd", "nao_classificado"),
+        )
+        try:
+            category = LGPDCategory(category_value)
+        except ValueError:
+            category = LGPDCategory.NAO_CLASSIFICADO
+
+        mapped_items.append(
+            DataItem(
+                key=item.key,
+                value=item.value,
+                sensitive=is_sensitive,
+                lgpd_category=category,
+                legal_basis=classificacao.get(
+                    "legal_basis", classificacao.get("base_legal")
+                ),
+            )
+        )
+
+    total_personal = sum(
+        1 for i in mapped_items if i.lgpd_category != LGPDCategory.NAO_CLASSIFICADO
+    )
     total_sensitive = sum(1 for i in mapped_items if i.sensitive)
-    
+
     return DataMappingResponse(
         mapped_data=mapped_items,
         compliance_score=compliance_score,
         recommendations=recommendations,
         total_personal_data=total_personal,
-        total_sensitive_data=total_sensitive
+        total_sensitive_data=total_sensitive,
     )
 
 
 @router.post(
     "/map-data/upload",
+    response_model=DataMappingResponse,
     summary="Mapear dados a partir de arquivo CSV/JSON",
-    description="Faz upload de arquivo CSV ou JSON e analisa os dados conforme LGPD."
+    description="Faz upload de arquivo CSV ou JSON e analisa os dados conforme LGPD.",
 )
-async def map_data_from_file(file: UploadFile = File(...)):
-    """
-    Aceita upload de arquivo CSV ou JSON e executa o data mapping LGPD.
-    """
-    if not file.filename.endswith(('.csv', '.json')):
+async def map_data_from_file(
+    file: UploadFile = File(...),
+    settings: Settings = Depends(get_settings),
+):
+    """Aceita upload de arquivo CSV ou JSON e executa o data mapping LGPD."""
+    if not file.filename or not file.filename.endswith((".csv", ".json")):
         raise HTTPException(
-            status_code=400,
-            detail="Formato não suportado. Use CSV ou JSON."
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Formato nao suportado. Use CSV ou JSON.",
         )
-    
+
     content = await file.read()
-    
+
     try:
-        if file.filename.endswith('.csv'):
-            df = pd.read_csv(StringIO(content.decode('utf-8')))
+        if file.filename.endswith(".csv"):
+            df = pd.read_csv(StringIO(content.decode("utf-8")))
             data_items = [
                 DataItem(key=col, value=str(df[col].iloc[0]))
                 for col in df.columns
                 if not df[col].empty
             ]
         else:
-            data_dict = json.loads(content.decode('utf-8'))
+            data_dict = json.loads(content.decode("utf-8"))
             if isinstance(data_dict, list):
                 data_dict = data_dict[0] if data_dict else {}
             data_items = [
-                DataItem(key=k, value=str(v))
-                for k, v in data_dict.items()
+                DataItem(key=k, value=str(v)) for k, v in data_dict.items()
             ]
-    except Exception as e:
+    except Exception as exc:
         raise HTTPException(
-            status_code=400,
-            detail=f"Erro ao processar arquivo: {str(e)}"
-        )
-    
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Erro ao processar arquivo: {exc}",
+        ) from exc
+
     request = DataMappingRequest(data=data_items)
-    return await map_data(request)
+    return await map_data(request, settings)
 
 
-def _classify_by_regex(data: list) -> list:
-    """
-    Classificação básica por regex (fallback quando Ollama não está disponível).
-    Identifica padrões comuns de dados pessoais sem IA.
-    """
+def _classify_by_regex(data: list[DataItem]) -> list[dict]:
+    """Regex-based fallback classifier when Ollama is unavailable."""
     sensitive_patterns = {
-        'cpf': r'\d{3}\.?\d{3}\.?\d{3}-?\d{2}',
-        'rg': r'\d{1,2}\.?\d{3}\.?\d{3}-?[\dxX]',
-        'email': r'[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}',
-        'telefone': r'\(?\d{2}\)?[\s-]?\d{4,5}-?\d{4}',
-        'data_nascimento': r'\d{2}/\d{2}/\d{4}',
+        "cpf": r"\d{3}\.?\d{3}\.?\d{3}-?\d{2}",
+        "rg": r"\d{1,2}\.?\d{3}\.?\d{3}-?[\dxX]",
+        "email": r"[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}",
+        "telefone": r"\(?\d{2}\)?[\s-]?\d{4,5}-?\d{4}",
+        "data_nascimento": r"\d{2}/\d{2}/\d{4}",
     }
-    
-    sensitive_keys = ['saude', 'health', 'biometrico', 'biometric', 'racial', 
-                     'religiao', 'religion', 'politico', 'political', 'sexual']
-    
+
+    sensitive_keys = [
+        "saude", "health", "biometrico", "biometric", "racial",
+        "religiao", "religion", "politico", "political", "sexual",
+    ]
+
     result = []
     for item in data:
         is_sensitive = any(k in item.key.lower() for k in sensitive_keys)
-        is_personal = any(re.search(p, item.value) for p in sensitive_patterns.values())
-        
-        result.append({
-            "key": item.key,
-            "is_personal": is_personal or is_sensitive,
-            "is_sensitive": is_sensitive,
-            "lgpd_category": "dado_sensivel" if is_sensitive else ("dado_pessoal" if is_personal else "nao_classificado"),
-            "legal_basis": "Verificar base legal conforme LGPD Art. 7"
-        })
-    
+        is_personal = any(
+            re.search(p, item.value) for p in sensitive_patterns.values()
+        )
+
+        if is_sensitive:
+            category = "dado_sensivel"
+        elif is_personal:
+            category = "dado_pessoal"
+        else:
+            category = "nao_classificado"
+
+        result.append(
+            {
+                "key": item.key,
+                "is_personal": is_personal or is_sensitive,
+                "is_sensitive": is_sensitive,
+                "lgpd_category": category,
+                "legal_basis": "Verificar base legal conforme LGPD Art. 7",
+            }
+        )
+
     return result

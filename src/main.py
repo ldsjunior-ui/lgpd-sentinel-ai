@@ -7,8 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 import uvicorn
 
-# Importar rotas (serão criadas nos próximos commits)
-# from src.api.routes import mapping, dpia
+from src.api.routes import mapping, dpia
 
 # Metadados da API
 app = FastAPI(
@@ -73,9 +72,8 @@ async def root():
         "version": "0.1.0"
     }
 
-# Incluir routers (descomente conforme os módulos forem implementados)
-# app.include_router(mapping.router, prefix="/api/v1", tags=["Data Mapping"])
-# app.include_router(dpia.router, prefix="/api/v1", tags=["DPIA"])
+app.include_router(mapping.router, prefix="/api/v1", tags=["Data Mapping"])
+app.include_router(dpia.router, prefix="/api/v1", tags=["DPIA"])
 
 if __name__ == "__main__":
     uvicorn.run(
