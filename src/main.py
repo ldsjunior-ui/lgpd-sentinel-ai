@@ -7,7 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 import uvicorn
 
-from src.api.routes import mapping, dpia, history
+from src.api.routes import mapping, dpia, history, dsr
 from src.core.database import init_db
 
 # Metadados da API
@@ -80,6 +80,7 @@ async def startup():
 app.include_router(mapping.router, prefix="/api/v1", tags=["Data Mapping"])
 app.include_router(dpia.router, prefix="/api/v1", tags=["DPIA"])
 app.include_router(history.router, prefix="/api/v1", tags=["Histórico"])
+app.include_router(dsr.router, prefix="/api/v1", tags=["DSR"])
 
 if __name__ == "__main__":
     uvicorn.run(

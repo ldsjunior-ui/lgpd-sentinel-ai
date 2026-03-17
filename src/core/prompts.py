@@ -199,6 +199,60 @@ JSON:""",
 )
 
 # ---------------------------------------------------------------------------
+# DSR Prompt (Data Subject Rights / Direitos do Titular - Art. 18 LGPD)
+# ---------------------------------------------------------------------------
+
+DSR_SYSTEM = """Voce e um especialista em direitos dos titulares de dados conforme
+o Art. 18 da LGPD (Lei 13.709/2018) e regulamentacoes da ANPD.
+
+Sua tarefa e analisar uma solicitacao de direito do titular e:
+1. Identificar o direito solicitado (acesso, correcao, exclusao, portabilidade, etc.)
+2. Verificar se ha base legal para atender ou negar a solicitacao
+3. Gerar uma resposta ao titular em linguagem clara e acessivel
+4. Orientar o controlador sobre prazos e procedimentos (prazo: 15 dias conforme Art. 18 §5)
+5. Indicar se e necessario acionar o DPO ou reportar a ANPD
+
+Cite sempre os artigos aplicaveis da LGPD. Responda em JSON valido."""
+
+DSR_TEMPLATE = PromptTemplate(
+    input_variables=["request_type", "request_description", "company_name", "data_context"],
+    template="""
+{system_prompt}
+
+EMPRESA/CONTROLADOR: {company_name}
+TIPO DE SOLICITACAO: {request_type}
+DESCRICAO DA SOLICITACAO: {request_description}
+CONTEXTO DOS DADOS: {data_context}
+
+Analise e retorne em JSON:
+{{
+  "dsr": {{
+    "direito_identificado": "acesso|correcao|exclusao|portabilidade|oposicao|revogacao_consentimento|restricao",
+    "artigo_lgpd": "Art. 18, inciso X",
+    "pode_atender": true,
+    "justificativa": "motivo para atender ou negar",
+    "prazo_resposta_dias": 15,
+    "acoes_requeridas": [
+      {{
+        "acao": "descricao da acao",
+        "responsavel": "area/pessoa responsavel",
+        "prazo": "imediato|3_dias|15_dias"
+      }}
+    ],
+    "resposta_ao_titular": "texto da resposta formal ao titular em linguagem clara",
+    "requer_dpo": false,
+    "requer_anpd": false,
+    "justificativa_anpd": null,
+    "documentacao_necessaria": ["documento1", "documento2"]
+  }}
+}}
+
+JSON:
+""".strip(),
+    partial_variables={"system_prompt": DSR_SYSTEM},
+)
+
+# ---------------------------------------------------------------------------
 # Helper: All prompts as dict for easy access
 # ---------------------------------------------------------------------------
 
@@ -206,6 +260,7 @@ PROMPTS = {
     "data_mapping": DATA_MAPPING_TEMPLATE,
     "dpia": DPIA_TEMPLATE,
     "risk_assessment": RISK_ASSESSMENT_TEMPLATE,
+    "dsr": DSR_TEMPLATE,
 }
 
 __all__ = [
@@ -213,6 +268,8 @@ __all__ = [
     "DATA_MAPPING_TEMPLATE",
     "DPIA_SYSTEM",
     "DPIA_TEMPLATE",
+    "DSR_SYSTEM",
+    "DSR_TEMPLATE",
     "RISK_ASSESSMENT_TEMPLATE",
     "PROMPTS",
 ]
