@@ -51,6 +51,26 @@ class Settings(BaseSettings):
     RISK_HIGH_THRESHOLD: float = Field(default=0.7, ge=0.0, le=1.0)
     RISK_MEDIUM_THRESHOLD: float = Field(default=0.4, ge=0.0, le=1.0)
 
+    # Stripe (freemium monetization)
+    STRIPE_SECRET_KEY: Optional[str] = Field(default=None)
+    STRIPE_WEBHOOK_SECRET: Optional[str] = Field(default=None)
+    STRIPE_PRICE_ID_PRO: Optional[str] = Field(default=None)
+    STRIPE_SUCCESS_URL: str = Field(default="http://localhost:8501?checkout=success")
+    STRIPE_CANCEL_URL: str = Field(default="http://localhost:8501?checkout=cancel")
+
+    # Free tier quotas (per month)
+    FREE_QUOTA_MAPPINGS: int = Field(default=5)
+    FREE_QUOTA_DPIAS: int = Field(default=2)
+    FREE_QUOTA_DSRS: int = Field(default=10)
+
+    # Email notifications (SMTP — funciona com Gmail, Outlook, Brevo, etc.)
+    SMTP_HOST: str = Field(default="smtp-mail.outlook.com")
+    SMTP_PORT: int = Field(default=587)
+    SMTP_USER: Optional[str] = Field(default=None)      # seu email de envio
+    SMTP_PASSWORD: Optional[str] = Field(default=None)  # senha ou app password
+    SMTP_FROM: str = Field(default="")                  # deixe vazio = usa SMTP_USER
+    NOTIFICATION_EMAIL: str = Field(default="leo.jr_souza@hotmail.com")
+
 
 @lru_cache()
 def get_settings() -> Settings:
