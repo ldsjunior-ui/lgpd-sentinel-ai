@@ -6,7 +6,6 @@ Public stats endpoint — mostra métricas agregadas anônimas da instância loc
 Zero dados pessoais. Zero telemetria externa. 100% local.
 """
 
-import sqlite3
 from datetime import datetime
 from pathlib import Path
 

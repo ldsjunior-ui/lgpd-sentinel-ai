@@ -11,7 +11,7 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 from fastapi import status
-from httpx import AsyncClient
+from httpx import AsyncClient, ASGITransport
 
 from src.main import app
 from src.models.schemas import LGPDCategory, RiskLevel
@@ -101,7 +101,7 @@ async def test_map_data_success(sample_mapping_payload, mock_ollama_response):
         "src.api.routes.mapping.Ollama",
         return_value=AsyncMock(ainvoke=AsyncMock(return_value=mock_ollama_response)),
     ):
-        async with AsyncClient(app=app, base_url="http://test") as client:
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
             response = await client.post(
                 "/api/v1/map-data",
                 json=sample_mapping_payload,
@@ -125,7 +125,7 @@ async def test_map_data_identifies_sensitive_data(sample_mapping_payload, mock_o
         "src.api.routes.mapping.Ollama",
         return_value=AsyncMock(ainvoke=AsyncMock(return_value=mock_ollama_response)),
     ):
-        async with AsyncClient(app=app, base_url="http://test") as client:
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
             response = await client.post(
                 "/api/v1/map-data",
                 json=sample_mapping_payload,
@@ -146,7 +146,7 @@ async def test_map_data_identifies_sensitive_data(sample_mapping_payload, mock_o
 @pytest.mark.asyncio
 async def test_map_data_empty_payload():
     """Test that empty data returns 422 validation error."""
-    async with AsyncClient(app=app, base_url="http://test") as client:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         response = await client.post(
             "/api/v1/map-data",
             json={"data": [], "context": "test"},
@@ -164,7 +164,7 @@ async def test_map_data_ollama_unavailable(sample_mapping_payload):
             ainvoke=AsyncMock(side_effect=ConnectionError("Ollama not running"))
         ),
     ):
-        async with AsyncClient(app=app, base_url="http://test") as client:
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
             response = await client.post(
                 "/api/v1/map-data",
                 json=sample_mapping_payload,
@@ -182,7 +182,7 @@ async def test_map_data_fallback_classifier(sample_mapping_payload):
             ainvoke=AsyncMock(return_value="I cannot process this request properly")
         ),
     ):
-        async with AsyncClient(app=app, base_url="http://test") as client:
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
             response = await client.post(
                 "/api/v1/map-data",
                 json=sample_mapping_payload,
@@ -202,7 +202,7 @@ async def test_map_data_fallback_classifier(sample_mapping_payload):
 @pytest.mark.asyncio
 async def test_health_check():
     """Test that the health check endpoint returns 200."""
-    async with AsyncClient(app=app, base_url="http://test") as client:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
         response = await client.get("/health")
 
     assert response.status_code == status.HTTP_200_OK

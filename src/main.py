@@ -2,6 +2,8 @@
 # FastAPI app com endpoints de compliance LGPD
 # 100% open source, Apache 2.0
 
+from contextlib import asynccontextmanager
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
@@ -10,8 +12,24 @@ import uvicorn
 from src.api.routes import billing, dpia, dsr, history, mapping, stats
 from src.core.database import init_db
 
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Startup e shutdown da aplicação."""
+    init_db()
+    print("\n" + "=" * 60)
+    print("🛡️  LGPD Sentinel AI v0.1.0 — Pronto para auditorias!")
+    print("=" * 60)
+    print("📖  Docs:        http://localhost:8000/docs")
+    print("📊  Stats:       http://localhost:8000/api/v1/stats")
+    print("💬  Comunidade:  https://github.com/ldsjunior-ui/lgpd-sentinel-ai/discussions")
+    print("⭐  GitHub:      https://github.com/ldsjunior-ui/lgpd-sentinel-ai")
+    print("=" * 60 + "\n")
+    yield
+
+
 # Metadados da API
 app = FastAPI(
+    lifespan=lifespan,
     title="LGPD Sentinel AI",
     description="""
     Ferramenta 100% open source para audits automatizados de conformidade LGPD (Lei Geral de Proteção de Dados).
@@ -73,17 +91,6 @@ async def root():
         "version": "0.1.0"
     }
 
-@app.on_event("startup")
-async def startup():
-    init_db()
-    print("\n" + "=" * 60)
-    print("🛡️  LGPD Sentinel AI v0.1.0 — Pronto para auditorias!")
-    print("=" * 60)
-    print("📖  Docs:        http://localhost:8000/docs")
-    print("📊  Stats:       http://localhost:8000/api/v1/stats")
-    print("💬  Comunidade:  https://github.com/ldsjunior-ui/lgpd-sentinel-ai/discussions")
-    print("⭐  GitHub:      https://github.com/ldsjunior-ui/lgpd-sentinel-ai")
-    print("=" * 60 + "\n")
 
 app.include_router(mapping.router, prefix="/api/v1", tags=["Data Mapping"])
 app.include_router(dpia.router, prefix="/api/v1", tags=["DPIA"])

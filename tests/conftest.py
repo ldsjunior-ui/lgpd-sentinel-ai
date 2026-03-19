@@ -4,9 +4,20 @@
 """pytest configuration and shared fixtures for LGPD Sentinel AI tests."""
 
 import pytest
-from httpx import AsyncClient
+from httpx import AsyncClient, ASGITransport
+from unittest.mock import patch
 
 from src.main import app
+
+
+@pytest.fixture(autouse=True)
+def bypass_quota():
+    """Disable quota enforcement in all unit tests to avoid DB state pollution."""
+    with (
+        patch("src.core.quota.get_usage", return_value={"mappings": 0, "dpias": 0, "dsrs": 0}),
+        patch("src.core.quota.increment_usage", return_value=None),
+    ):
+        yield
 
 
 @pytest.fixture(scope="session")
@@ -18,7 +29,7 @@ def anyio_backend():
 @pytest.fixture
 async def client():
     """Async HTTP client for testing FastAPI endpoints."""
-    async with AsyncClient(app=app, base_url="http://test") as ac:
+    async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as ac:
         yield ac
 
 
