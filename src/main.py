@@ -7,7 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 import uvicorn
 
-from src.api.routes import mapping, dpia, history, dsr
+from src.api.routes import billing, dpia, dsr, history, mapping, stats
 from src.core.database import init_db
 
 # Metadados da API
@@ -76,11 +76,21 @@ async def root():
 @app.on_event("startup")
 async def startup():
     init_db()
+    print("\n" + "=" * 60)
+    print("🛡️  LGPD Sentinel AI v0.1.0 — Pronto para auditorias!")
+    print("=" * 60)
+    print("📖  Docs:        http://localhost:8000/docs")
+    print("📊  Stats:       http://localhost:8000/api/v1/stats")
+    print("💬  Comunidade:  https://github.com/ldsjunior-ui/lgpd-sentinel-ai/discussions")
+    print("⭐  GitHub:      https://github.com/ldsjunior-ui/lgpd-sentinel-ai")
+    print("=" * 60 + "\n")
 
 app.include_router(mapping.router, prefix="/api/v1", tags=["Data Mapping"])
 app.include_router(dpia.router, prefix="/api/v1", tags=["DPIA"])
 app.include_router(history.router, prefix="/api/v1", tags=["Histórico"])
 app.include_router(dsr.router, prefix="/api/v1", tags=["DSR"])
+app.include_router(billing.router, prefix="/api/v1", tags=["Billing / Planos"])
+app.include_router(stats.router, prefix="/api/v1", tags=["Sistema"])
 
 if __name__ == "__main__":
     uvicorn.run(
