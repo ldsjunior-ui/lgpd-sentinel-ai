@@ -8,9 +8,8 @@ SMTP calls are mocked — no real emails are sent.
 
 import smtplib
 from email.mime.multipart import MIMEMultipart
-from unittest.mock import MagicMock, patch, call
+from unittest.mock import MagicMock, patch
 
-import pytest
 
 from src.core.notifications import (
     _build_new_subscriber_email,

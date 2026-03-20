@@ -30,7 +30,7 @@ def _build_new_subscriber_email(
 ) -> MIMEMultipart:
     """Compose HTML email for new Pro subscriber."""
     msg = MIMEMultipart("alternative")
-    msg["Subject"] = f"🎉 Novo assinante Pro — LGPD Sentinel AI"
+    msg["Subject"] = "🎉 Novo assinante Pro — LGPD Sentinel AI"
     msg["To"] = to_email
 
     timestamp = datetime.utcnow().strftime("%d/%m/%Y às %H:%M UTC")

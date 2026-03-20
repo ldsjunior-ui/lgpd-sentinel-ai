@@ -6,9 +6,6 @@ Unit tests for the public stats endpoint (src/api/routes/stats.py).
 Uses temporary SQLite DB — no persistent state required.
 """
 
-import tempfile
-from pathlib import Path
-from unittest.mock import patch
 
 import pytest
 from fastapi import status

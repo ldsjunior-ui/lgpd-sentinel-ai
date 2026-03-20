@@ -11,9 +11,7 @@ from fastapi import status
 from httpx import AsyncClient, ASGITransport
 
 from src.main import app
-from src.core.database import init_db, save_mapping_audit, save_dpia_audit
-import tempfile
-from pathlib import Path
+from src.core.database import init_db
 from unittest.mock import patch
 
 

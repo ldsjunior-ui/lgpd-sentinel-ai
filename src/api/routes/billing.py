@@ -11,7 +11,7 @@ from typing import Any, Optional
 import stripe
 from fastapi import APIRouter, Depends, Header, HTTPException, Request, status
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel, EmailStr, Field
+from pydantic import BaseModel, Field
 
 from src.core.config import Settings, get_settings
 from src.core.notifications import notify_new_subscriber, notify_cancellation
@@ -228,7 +228,7 @@ async def stripe_webhook(
         customer_id = sub.get("customer")
         if customer_id:
             # Find key by customer ID and downgrade
-            from src.core.database import get_conn, DB_PATH
+            from src.core.database import get_conn
             downgraded_key = None
             with get_conn() as conn:
                 row = conn.execute(

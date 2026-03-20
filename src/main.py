@@ -6,7 +6,6 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
 import uvicorn
 
 from src.api.routes import billing, dpia, dsr, history, mapping, stats
@@ -33,18 +32,18 @@ app = FastAPI(
     title="LGPD Sentinel AI",
     description="""
     Ferramenta 100% open source para audits automatizados de conformidade LGPD (Lei Geral de Proteção de Dados).
-    
+
     ## Features
     - 📊 **Data Mapping**: Identificação automática de dados pessoais com IA
     - 🔍 **DPIA**: Avaliação de Impacto à Proteção de Dados automatizada
     - 📝 **DSR**: Gerenciamento de solicitações de titulares de dados
     - 🛡️ **Risk Assessment**: Classificação de riscos (alto/médio/baixo)
-    
+
     ## Stack
     - IA: LangChain + Ollama + Mistral (gratuito e local)
     - DB: Supabase (free tier)
     - Hosting: Self-hosted via Docker (grátis) ou managed cloud pago
-    
+
     Apache 2.0 License - Zero risco jurídico
     """,
     version="0.1.0",
