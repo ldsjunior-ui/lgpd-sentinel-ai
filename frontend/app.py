@@ -4,6 +4,7 @@ Frontend visual para auditorias LGPD automatizadas
 """
 
 import streamlit as st
+import streamlit.components.v1 as components
 import httpx
 import json
 import pandas as pd
@@ -18,6 +19,55 @@ st.set_page_config(
 )
 
 API_BASE = "http://localhost:8000/api/v1"
+
+# ─── Matrix Rain Background ───────────────────────────────────────────────────
+components.html("""
+<script>
+(function() {
+  var parent = window.parent.document;
+  if (parent.getElementById('lgpd-matrix-canvas')) return;
+
+  var canvas = parent.createElement('canvas');
+  canvas.id = 'lgpd-matrix-canvas';
+  Object.assign(canvas.style, {
+    position: 'fixed', top: '0', left: '0',
+    width: '100%', height: '100%',
+    pointerEvents: 'none', zIndex: '0', opacity: '0.13',
+  });
+  parent.body.appendChild(canvas);
+
+  var ctx = canvas.getContext('2d');
+  var fs = 13;
+  var chars = 'アカサタナハマヤラワABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789@#$%&';
+  var cols, drops;
+
+  function init() {
+    canvas.width  = window.parent.innerWidth;
+    canvas.height = window.parent.innerHeight;
+    cols  = Math.floor(canvas.width / fs);
+    drops = Array.from({length: cols}, function() { return Math.random() * -50; });
+  }
+
+  function draw() {
+    ctx.fillStyle = 'rgba(0,0,0,0.04)';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.font = fs + 'px monospace';
+    for (var i = 0; i < drops.length; i++) {
+      var c = chars[Math.floor(Math.random() * chars.length)];
+      ctx.fillStyle = '#afffcf';
+      ctx.fillText(c, i * fs, drops[i] * fs);
+      ctx.fillStyle = '#00cc50';
+      if (drops[i] * fs > canvas.height && Math.random() > 0.975) drops[i] = 0;
+      drops[i] += 0.5;
+    }
+  }
+
+  init();
+  window.parent.addEventListener('resize', init);
+  setInterval(draw, 45);
+})();
+</script>
+""", height=0)
 
 # ─── Estilos ──────────────────────────────────────────────────────────────────
 st.markdown("""
