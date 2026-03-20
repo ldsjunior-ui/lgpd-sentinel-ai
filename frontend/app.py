@@ -6,6 +6,7 @@ Frontend visual para auditorias LGPD automatizadas
 import streamlit as st
 import httpx
 import json
+import pandas as pd
 from datetime import datetime
 
 # ─── Configuração da página ───────────────────────────────────────────────────
@@ -65,6 +66,76 @@ with st.sidebar:
             st.error("❌ API com erro")
     except Exception:
         st.warning("⚠️ API offline — inicie com:\n```\nuvicorn src.main:app --reload\n```")
+
+    st.markdown("---")
+
+    # ── Plano & API Key ──────────────────────────────────────────────────
+    st.markdown("### 🔑 Sua API Key")
+    api_key_input = st.text_input(
+        "API Key",
+        value=st.session_state.get("api_key", ""),
+        type="password",
+        placeholder="lgpd_...",
+        key="api_key_field",
+    )
+    if api_key_input:
+        st.session_state["api_key"] = api_key_input
+
+    if st.button("Gerar key gratuita", use_container_width=True):
+        try:
+            r = httpx.post(f"{API_BASE}/billing/keys", json={}, timeout=5)
+            if r.status_code == 200:
+                new_key = r.json()["api_key"]
+                st.session_state["api_key"] = new_key
+                st.success("Key gerada!")
+                st.code(new_key, language=None)
+            else:
+                st.error("Erro ao gerar key.")
+        except Exception:
+            st.error("API offline.")
+
+    # Status do plano
+    current_key = st.session_state.get("api_key", "")
+    if current_key:
+        try:
+            status_r = httpx.get(
+                f"{API_BASE}/billing/status",
+                headers={"X-API-Key": current_key},
+                timeout=5,
+            )
+            if status_r.status_code == 200:
+                s = status_r.json()
+                plan = s.get("plan", "free")
+                usage = s.get("usage", {})
+                limits = s.get("limits", {})
+
+                if plan == "pro":
+                    st.success("⭐ Plano **Pro** — uso ilimitado")
+                else:
+                    st.info(f"🆓 Plano **Free**")
+                    def _bar(label, used, limit):
+                        if isinstance(limit, int):
+                            pct = min(used / limit, 1.0)
+                            st.caption(f"{label}: {used}/{limit}")
+                            st.progress(pct)
+                    _bar("Mapeamentos", usage.get("mappings", 0), limits.get("mappings", 5))
+                    _bar("DPIAs", usage.get("dpias", 0), limits.get("dpias", 2))
+                    _bar("DSRs", usage.get("dsrs", 0), limits.get("dsrs", 10))
+
+                    if s.get("stripe_configured"):
+                        try:
+                            checkout_r = httpx.post(
+                                f"{API_BASE}/billing/checkout",
+                                json={"api_key": current_key},
+                                timeout=5,
+                            )
+                            if checkout_r.status_code == 200:
+                                url = checkout_r.json().get("checkout_url", "")
+                                st.markdown(f"[⭐ Upgrade para Pro]({url})", unsafe_allow_html=False)
+                        except Exception:
+                            pass
+        except Exception:
+            pass
 
     st.markdown("---")
     st.markdown("### 📚 Links")
@@ -148,10 +219,10 @@ with tab1:
                         for i in items_validos
                     ],
                 }
-                with st.spinner("🤖 Analisando com IA local (Mistral)..."):
+                with st.spinner("🤖 Analisando com IA local (llama3.1)..."):
                     try:
                         resp = httpx.post(
-                            f"{API_BASE}/mapping",
+                            f"{API_BASE}/map-data",
                             json=payload,
                             timeout=120,
                         )
@@ -248,10 +319,10 @@ with tab2:
                     "personal_data_involved": dpia_data,
                     "existing_measures": dpia_measures,
                 }
-                with st.spinner("🤖 Gerando DPIA com IA local (Mistral)..."):
+                with st.spinner("🤖 Gerando DPIA com IA local (llama3.1)..."):
                     try:
                         resp = httpx.post(
-                            f"{API_BASE}/dpia",
+                            f"{API_BASE}/dpia/generate",
                             json=payload,
                             timeout=120,
                         )
@@ -463,26 +534,97 @@ with tab3:
 with tab4:
     st.header("📂 Histórico de Auditorias")
 
-    h_col1, h_col2 = st.columns(2)
+    if st.button("🔄 Atualizar histórico", key="refresh_all"):
+        for k in ("hist_mapping", "hist_dpia"):
+            st.session_state.pop(k, None)
 
-    with h_col1:
-        st.subheader("📊 Mapeamentos")
-        if st.button("🔄 Atualizar", key="refresh_mapping"):
-            st.session_state.pop("hist_mapping", None)
+    # Carregar dados
+    if "hist_mapping" not in st.session_state:
+        try:
+            r = httpx.get(f"{API_BASE}/history/mapping", timeout=5)
+            st.session_state["hist_mapping"] = r.json() if r.status_code == 200 else []
+        except Exception:
+            st.session_state["hist_mapping"] = []
 
-        if "hist_mapping" not in st.session_state:
-            try:
-                r = httpx.get(f"{API_BASE}/history/mapping", timeout=5)
-                st.session_state["hist_mapping"] = r.json() if r.status_code == 200 else []
-            except Exception:
-                st.session_state["hist_mapping"] = []
+    if "hist_dpia" not in st.session_state:
+        try:
+            r = httpx.get(f"{API_BASE}/history/dpia", timeout=5)
+            st.session_state["hist_dpia"] = r.json() if r.status_code == 200 else []
+        except Exception:
+            st.session_state["hist_dpia"] = []
 
-        audits = st.session_state.get("hist_mapping", [])
-        if not audits:
+    mappings = st.session_state.get("hist_mapping", [])
+    dpias    = st.session_state.get("hist_dpia", [])
+
+    # ── Métricas resumo ──────────────────────────────────────────────────────
+    m1, m2, m3, m4 = st.columns(4)
+    m1.metric("📊 Mapeamentos", len(mappings))
+    m2.metric("🔍 DPIAs", len(dpias))
+
+    if dpias:
+        scores = [a.get("compliance_score", 0) for a in dpias if a.get("compliance_score") is not None]
+        avg_score = sum(scores) / len(scores) if scores else 0
+        m3.metric("📈 Score médio", f"{avg_score:.0f}/100")
+
+        risk_counts = {"high": 0, "medium": 0, "low": 0}
+        for a in dpias:
+            risk_counts[a.get("risk_level", "low")] += 1
+        dominant = max(risk_counts, key=risk_counts.get)
+        risk_label = {"high": "🔴 Alto", "medium": "🟡 Médio", "low": "🟢 Baixo"}[dominant]
+        m4.metric("⚠️ Risco dominante", risk_label)
+    else:
+        m3.metric("📈 Score médio", "—")
+        m4.metric("⚠️ Risco dominante", "—")
+
+    st.markdown("---")
+
+    # ── Gráficos DPIA ────────────────────────────────────────────────────────
+    if dpias:
+        df_dpia = pd.DataFrame(dpias)
+        df_dpia["created_at"] = pd.to_datetime(df_dpia["created_at"], errors="coerce")
+        df_dpia["data"] = df_dpia["created_at"].dt.strftime("%d/%m/%y")
+
+        chart_col1, chart_col2 = st.columns(2)
+
+        with chart_col1:
+            st.markdown("**📉 Score de conformidade ao longo do tempo**")
+            if "compliance_score" in df_dpia.columns:
+                chart_df = df_dpia[["data", "compliance_score"]].rename(
+                    columns={"compliance_score": "Score"}
+                ).set_index("data")
+                st.line_chart(chart_df)
+
+        with chart_col2:
+            st.markdown("**🎯 Distribuição de risco (DPIAs)**")
+            risk_map = {"high": "Alto", "medium": "Médio", "low": "Baixo"}
+            risk_df = (
+                df_dpia["risk_level"]
+                .map(risk_map)
+                .value_counts()
+                .rename_axis("Risco")
+                .reset_index(name="Qtd")
+                .set_index("Risco")
+            )
+            st.bar_chart(risk_df)
+
+        st.markdown("---")
+
+    # ── Tabs internas: Mapeamentos | DPIAs ───────────────────────────────────
+    hist_tab1, hist_tab2 = st.tabs(["📊 Mapeamentos", "🔍 DPIAs"])
+
+    with hist_tab1:
+        if not mappings:
             st.info("Nenhuma auditoria de mapeamento encontrada.")
         else:
-            for a in audits:
-                with st.expander(f"#{a['id']} — {a.get('company', 'N/A')} ({a.get('created_at', '')[:10]})"):
+            df_map = pd.DataFrame(mappings)
+            # Filtro por empresa
+            empresas = ["Todas"] + sorted(df_map["company"].dropna().unique().tolist())
+            empresa_sel = st.selectbox("Filtrar por empresa", empresas, key="filter_map_company")
+            if empresa_sel != "Todas":
+                df_map = df_map[df_map["company"] == empresa_sel]
+
+            for _, a in df_map.iterrows():
+                with st.expander(f"#{a['id']} — {a.get('company', 'N/A')} ({str(a.get('created_at', ''))[:10]})"):
                     st.write(f"**Contexto:** {a.get('context', 'N/A')}")
                     if st.button(f"Ver detalhes #{a['id']}", key=f"map_detail_{a['id']}"):
                         try:
@@ -492,30 +634,34 @@ with tab4:
                         except Exception as e:
                             st.error(str(e))
 
-    with h_col2:
-        st.subheader("🔍 DPIAs")
-        if st.button("🔄 Atualizar", key="refresh_dpia"):
-            st.session_state.pop("hist_dpia", None)
-
-        if "hist_dpia" not in st.session_state:
-            try:
-                r = httpx.get(f"{API_BASE}/history/dpia", timeout=5)
-                st.session_state["hist_dpia"] = r.json() if r.status_code == 200 else []
-            except Exception:
-                st.session_state["hist_dpia"] = []
-
-        dpia_audits = st.session_state.get("hist_dpia", [])
-        if not dpia_audits:
+    with hist_tab2:
+        if not dpias:
             st.info("Nenhuma auditoria DPIA encontrada.")
         else:
-            for a in dpia_audits:
-                risk = a.get("risk_level", "N/A")
+            df_d = pd.DataFrame(dpias)
+            # Filtros
+            fc1, fc2 = st.columns(2)
+            empresas_d = ["Todas"] + sorted(df_d["company"].dropna().unique().tolist())
+            empresa_d  = fc1.selectbox("Filtrar por empresa", empresas_d, key="filter_dpia_company")
+            riscos     = ["Todos", "high", "medium", "low"]
+            risco_sel  = fc2.selectbox("Filtrar por risco", riscos, key="filter_dpia_risk",
+                                       format_func=lambda x: {"Todos": "Todos", "high": "🔴 Alto",
+                                                               "medium": "🟡 Médio", "low": "🟢 Baixo"}[x])
+            if empresa_d != "Todas":
+                df_d = df_d[df_d["company"] == empresa_d]
+            if risco_sel != "Todos":
+                df_d = df_d[df_d["risk_level"] == risco_sel]
+
+            for _, a in df_d.iterrows():
+                risk       = a.get("risk_level", "N/A")
                 risk_emoji = {"high": "🔴", "medium": "🟡", "low": "🟢"}.get(risk, "⚪")
+                score      = a.get("compliance_score", 0)
                 with st.expander(
-                    f"#{a['id']} — {a.get('company', 'N/A')} {risk_emoji} ({a.get('created_at', '')[:10]})"
+                    f"#{a['id']} {risk_emoji} — {a.get('company', 'N/A')} "
+                    f"| Score: {score:.0f}/100 | ({str(a.get('created_at', ''))[:10]})"
                 ):
                     st.write(f"**Tratamento:** {a.get('treatment', 'N/A')}")
-                    st.write(f"**Risco:** {risk.upper()} | **Conformidade:** {a.get('compliance_score', 0):.0f}/100")
+                    st.progress(int(score) / 100)
                     if st.button(f"Ver detalhes #{a['id']}", key=f"dpia_detail_{a['id']}"):
                         try:
                             dr = httpx.get(f"{API_BASE}/history/dpia/{a['id']}", timeout=5)

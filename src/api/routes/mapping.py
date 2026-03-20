@@ -15,6 +15,7 @@ from langchain_community.llms import Ollama
 
 from src.core.config import Settings, get_settings
 from src.core.prompts import DATA_MAPPING_TEMPLATE
+from src.core.quota import QuotaCheck
 from src.models.schemas import (
     DataMappingRequest,
     DataMappingResponse,
@@ -58,6 +59,7 @@ def _extract_json(text: str) -> dict[str, Any]:
 async def map_data(
     request: DataMappingRequest,
     settings: Settings = Depends(get_settings),
+    _quota: dict = Depends(QuotaCheck("mappings")),
 ):
     """Endpoint principal de data mapping LGPD."""
     data_items_str = "\n".join(
@@ -167,6 +169,7 @@ async def map_data(
 async def map_data_from_file(
     file: UploadFile = File(...),
     settings: Settings = Depends(get_settings),
+    _quota: dict = Depends(QuotaCheck("mappings")),
 ):
     """Aceita upload de arquivo CSV ou JSON e executa o data mapping LGPD."""
     if not file.filename or not file.filename.endswith((".csv", ".json")):

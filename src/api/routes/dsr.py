@@ -19,6 +19,7 @@ from pydantic import BaseModel, Field
 
 from src.core.config import Settings, get_settings
 from src.core.prompts import DSR_TEMPLATE
+from src.core.quota import QuotaCheck
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/dsr", tags=["DSR / Direitos do Titular"])
@@ -103,6 +104,7 @@ def _extract_json(text: str) -> dict[str, Any]:
 async def analyze_dsr(
     request: DSRRequest,
     settings: Settings = Depends(get_settings),
+    _quota: dict = Depends(QuotaCheck("dsrs")),
 ) -> DSRResponse:
     """Analyze a Data Subject Rights request and generate response guidance."""
     logger.info(

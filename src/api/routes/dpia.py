@@ -20,6 +20,7 @@ from src.core.pdf_report import generate_dpia_pdf
 
 from src.core.config import Settings, get_settings
 from src.core.prompts import DPIA_TEMPLATE, RISK_ASSESSMENT_TEMPLATE
+from src.core.quota import QuotaCheck
 from src.models.schemas import (
     DPIARequest,
     DPIAResponse,
@@ -104,6 +105,7 @@ def _score_to_risk_level(score: float, settings: Settings) -> RiskLevel:
 async def generate_dpia(
     request: DPIARequest,
     settings: Settings = Depends(get_settings),
+    _quota: dict = Depends(QuotaCheck("dpias")),
 ) -> DPIAResponse:
     """
     Generate a full LGPD DPIA/RIPD report using local AI.
@@ -195,10 +197,11 @@ async def generate_dpia(
 async def generate_dpia_pdf_endpoint(
     request: DPIARequest,
     settings: Settings = Depends(get_settings),
+    _quota: dict = Depends(QuotaCheck("dpias")),
 ) -> Response:
     """Generate a full DPIA report and return it as a downloadable PDF."""
-    # Reuse the JSON generation logic
-    dpia_response = await generate_dpia(request, settings)
+    # Reuse the JSON generation logic (quota already checked above, pass dummy dict)
+    dpia_response = await generate_dpia(request, settings, _quota={})
     dpia_dict = dpia_response.model_dump()
 
     pdf_bytes = generate_dpia_pdf(dpia_dict)

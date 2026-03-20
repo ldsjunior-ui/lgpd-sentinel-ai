@@ -8,9 +8,10 @@ Uses the standard library sqlite3 — zero extra dependencies.
 
 import json
 import logging
+import secrets
 import sqlite3
 from contextlib import contextmanager
-from datetime import datetime
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any, Generator
 
@@ -42,7 +43,36 @@ def init_db(db_path: Path = DB_PATH) -> None:
                 result_json         TEXT NOT NULL,
                 created_at          TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now'))
             );
+
+            CREATE TABLE IF NOT EXISTS api_keys (
+                id                      INTEGER PRIMARY KEY AUTOINCREMENT,
+                api_key                 TEXT NOT NULL UNIQUE,
+                plan                    TEXT NOT NULL DEFAULT 'free',
+                email                   TEXT,
+                stripe_customer_id      TEXT,
+                stripe_subscription_id  TEXT,
+                active                  INTEGER NOT NULL DEFAULT 1,
+                trial_ends_at           TEXT,
+                created_at              TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now'))
+            );
+
+            CREATE TABLE IF NOT EXISTS usage_monthly (
+                id          INTEGER PRIMARY KEY AUTOINCREMENT,
+                api_key     TEXT NOT NULL,
+                month       TEXT NOT NULL,
+                mappings    INTEGER NOT NULL DEFAULT 0,
+                dpias       INTEGER NOT NULL DEFAULT 0,
+                dsrs        INTEGER NOT NULL DEFAULT 0,
+                UNIQUE(api_key, month)
+            );
         """)
+    # Migration: add trial_ends_at to existing installs that predate this column
+    with sqlite3.connect(db_path) as conn:
+        try:
+            conn.execute("ALTER TABLE api_keys ADD COLUMN trial_ends_at TEXT")
+            logger.info("Migrated api_keys: added trial_ends_at column")
+        except sqlite3.OperationalError:
+            pass  # column already exists
     logger.info("Database initialized at %s", db_path)
 
 
@@ -153,3 +183,96 @@ def get_dpia_audit(audit_id: int, db_path: Path = DB_PATH) -> dict[str, Any] | N
         d = dict(row)
         d["result"] = json.loads(d.pop("result_json"))
         return d
+
+
+# ─── API Keys & Plans ─────────────────────────────────────────────────────────
+
+
+def create_api_key(email: str | None = None, db_path: Path = DB_PATH) -> str:
+    """Generate and persist a new free-tier API key with a 7-day Pro trial. Returns the key string."""
+    key = "lgpd_" + secrets.token_urlsafe(32)
+    trial_ends_at = (datetime.utcnow() + timedelta(days=7)).strftime("%Y-%m-%dT%H:%M:%SZ")
+    with get_conn(db_path) as conn:
+        conn.execute(
+            "INSERT INTO api_keys (api_key, plan, email, trial_ends_at) VALUES (?, 'free', ?, ?)",
+            (key, email, trial_ends_at),
+        )
+    return key
+
+
+def is_trial_active(api_key: str, db_path: Path = DB_PATH) -> bool:
+    """Return True if the key has an active 7-day Pro trial."""
+    with get_conn(db_path) as conn:
+        row = conn.execute(
+            "SELECT trial_ends_at FROM api_keys WHERE api_key = ? AND active = 1",
+            (api_key,),
+        ).fetchone()
+    if not row or not row["trial_ends_at"]:
+        return False
+    trial_end = datetime.strptime(row["trial_ends_at"], "%Y-%m-%dT%H:%M:%SZ")
+    return datetime.utcnow() < trial_end
+
+
+def get_api_key(api_key: str, db_path: Path = DB_PATH) -> dict[str, Any] | None:
+    """Return API key record or None if not found / inactive."""
+    with get_conn(db_path) as conn:
+        row = conn.execute(
+            "SELECT * FROM api_keys WHERE api_key = ? AND active = 1", (api_key,)
+        ).fetchone()
+        return dict(row) if row else None
+
+
+def update_api_key_plan(
+    api_key: str,
+    plan: str,
+    stripe_customer_id: str | None = None,
+    stripe_subscription_id: str | None = None,
+    db_path: Path = DB_PATH,
+) -> None:
+    """Upgrade or downgrade an API key's plan."""
+    with get_conn(db_path) as conn:
+        conn.execute(
+            """
+            UPDATE api_keys
+            SET plan = ?, stripe_customer_id = ?, stripe_subscription_id = ?
+            WHERE api_key = ?
+            """,
+            (plan, stripe_customer_id, stripe_subscription_id, api_key),
+        )
+
+
+# ─── Usage tracking ───────────────────────────────────────────────────────────
+
+
+def _current_month() -> str:
+    return datetime.utcnow().strftime("%Y-%m")
+
+
+def increment_usage(api_key: str, endpoint: str, db_path: Path = DB_PATH) -> None:
+    """Increment usage counter for the current month. endpoint: 'mappings'|'dpias'|'dsrs'."""
+    month = _current_month()
+    allowed = {"mappings", "dpias", "dsrs"}
+    if endpoint not in allowed:
+        return
+    with get_conn(db_path) as conn:
+        conn.execute(
+            f"""
+            INSERT INTO usage_monthly (api_key, month, {endpoint})
+            VALUES (?, ?, 1)
+            ON CONFLICT(api_key, month) DO UPDATE SET {endpoint} = {endpoint} + 1
+            """,
+            (api_key, month),
+        )
+
+
+def get_usage(api_key: str, db_path: Path = DB_PATH) -> dict[str, int]:
+    """Return current month usage for an API key."""
+    month = _current_month()
+    with get_conn(db_path) as conn:
+        row = conn.execute(
+            "SELECT mappings, dpias, dsrs FROM usage_monthly WHERE api_key = ? AND month = ?",
+            (api_key, month),
+        ).fetchone()
+        if row:
+            return dict(row)
+        return {"mappings": 0, "dpias": 0, "dsrs": 0}

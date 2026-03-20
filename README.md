@@ -1,40 +1,69 @@
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
-[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](http://makeapullrequest.com)
 [![Python](https://img.shields.io/badge/Python-3.11+-blue.svg)](https://python.org)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.111-green.svg)](https://fastapi.tiangolo.com)
+[![Tests](https://img.shields.io/badge/tests-29%20passed-brightgreen.svg)](./tests/)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](http://makeapullrequest.com)
+[![Product Hunt](https://img.shields.io/badge/Product%20Hunt-Featured-orange.svg)](https://www.producthunt.com/posts/lgpd-sentinel-ai)
 
+# LGPD Sentinel AI 🛡️
+
+> **Auditorias LGPD automatizadas com IA local — nenhum dado sai do seu servidor.**
+
+Substitua dias de trabalho manual por minutos. O LGPD Sentinel AI gera **Data Mapping**, **RIPD/DPIA**, analisa **direitos dos titulares** e exporta relatórios em PDF — tudo rodando com IA 100% local via Ollama.
+
+**Ideal para:** DPOs, jurídico, compliance, consultorias e times de desenvolvimento.
+
+---
+
+## ⚡ O que ele faz em 60 segundos
+
+```bash
+docker compose up        # sobe API + IA
+# acesse http://localhost:8501
 ```
- _     _____ _____  ____     _____            _   _             _
-| |   / ____| __ \|  _ \   / ____|          | | (_)           | |
-| |  | |  __| |__) | | | | | (___   ___ _ __ | |_ _ _ __   ___| |
-| |  | | |_ |  ___/| | | |  \___ \ / _ \ '_ \| __| | '_ \ / _ \ |
-| |__| |__| | |    | |__| |  ____) |  __/ | | | |_| | | | |  __/ |
-|_____\_____|_|    |_____/  |_____/ \___|_| |_|\__|_|_| |_|\___|_|
 
-        AI para Compliance LGPD — 100% Open Source
-```
-
-# LGPD Sentinel AI
-
-Ferramenta **100% open source** para automatizar auditorias de conformidade com a **LGPD (Lei 13.709/2018)** usando **IA local** — nenhum dado sai do seu servidor, zero custo de API.
+1. Cole seus dados → recebe classificação LGPD + base legal
+2. Descreva um tratamento → recebe RIPD completo em PDF
+3. Recebe solicitação de titular → recebe resposta pronta (Art. 18)
 
 ---
 
 ## ✨ Funcionalidades
 
-| Feature | Descrição | Artigo LGPD |
+| Feature | O que entrega | Artigo LGPD |
 |---|---|---|
-| 📊 **Data Mapping** | Classifica dados pessoais por categoria, base legal e nível de risco | Art. 5, 7, 11 |
-| 🔍 **DPIA / RIPD** | Gera Relatório de Impacto completo com exportação em PDF | Art. 38 |
-| 📝 **DSR** | Analisa solicitações de direitos do titular (acesso, exclusão, portabilidade...) | Art. 18 |
-| 📂 **Histórico** | Salva todas as auditorias em banco local SQLite | — |
-| 🌐 **Interface Web** | Frontend Streamlit com 5 abas, pronto para uso imediato | — |
+| 📊 **Data Mapping** | Classifica dados pessoais/sensíveis, sugere base legal, score de conformidade 0-100 | Art. 5, 7, 11 |
+| 🔍 **DPIA / RIPD** | Relatório de Impacto completo com riscos, medidas de mitigação e PDF pronto para ANPD | Art. 38 |
+| 📝 **DSR** | Analisa os 8 direitos do titular (acesso, exclusão, portabilidade…) e gera resposta oficial | Art. 18 |
+| 📂 **Histórico** | Todas as auditorias salvas localmente com filtros, gráficos e exportação | — |
+| 🌐 **Interface Web** | Dashboard Streamlit com 5 abas, pronto para uso imediato | — |
+| 🔑 **API REST** | Integre no seu sistema via API com autenticação por API key | — |
+
+---
+
+## 💰 Planos
+
+> **🎁 Toda nova API key inclui 7 dias de acesso Pro gratuito — sem cartão de crédito.**
+
+| | **Free** | **Trial (7 dias)** | **Pro — R$97/mês** |
+|---|---|---|---|
+| Mapeamentos/mês | 5 | Ilimitado | Ilimitado |
+| DPIAs/mês | 2 | Ilimitado | Ilimitado |
+| DSRs/mês | 10 | Ilimitado | Ilimitado |
+| Exportação PDF | ✅ | ✅ | ✅ |
+| IA local (Ollama) | ✅ | ✅ | ✅ |
+| Histórico completo | ✅ | ✅ | ✅ |
+| Suporte prioritário | ❌ | ❌ | ✅ |
+
+**[→ Gerar API key + trial grátis](https://github.com/ldsjunior-ui/lgpd-sentinel-ai#início-rápido)** · **[→ Upgrade Pro](https://github.com/ldsjunior-ui/lgpd-sentinel-ai)**
+
+> A ANPD pode aplicar multas de até **R$ 50 milhões** por infração. Uma auditoria de conformidade com consultoria custa em média **R$ 8.000–R$ 30.000**. O LGPD Sentinel AI automatiza isso por R$97/mês.
 
 ---
 
 ## 🚀 Início Rápido
 
-### Opção 1 — Docker Compose (recomendado)
+### Opção 1 — Docker Compose (recomendado, 3 comandos)
 
 ```bash
 git clone https://github.com/ldsjunior-ui/lgpd-sentinel-ai.git
@@ -43,8 +72,8 @@ cp .env.example .env
 docker compose up
 ```
 
-- API: http://localhost:8000/docs
-- Frontend: http://localhost:8501
+- 🌐 **Frontend:** http://localhost:8501
+- 📖 **API Docs:** http://localhost:8000/docs
 
 ### Opção 2 — Local com Ollama
 
@@ -53,79 +82,63 @@ docker compose up
 ```bash
 git clone https://github.com/ldsjunior-ui/lgpd-sentinel-ai.git
 cd lgpd-sentinel-ai
-
-# Instalar dependências
-python -m venv .venv
-source .venv/bin/activate
+python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
-
-# Configurar ambiente
 cp .env.example .env
-# Edite .env: defina OLLAMA_MODEL=llama3.1:8b (ou mistral)
-
-# Baixar modelo de IA
 ollama pull llama3.1:8b
-
-# Subir tudo
 ./start.sh
 ```
 
-### Opção 3 — Script único
+---
+
+## 🔌 API
+
+Gere uma API key gratuita e integre no seu sistema:
 
 ```bash
-chmod +x start.sh && ./start.sh
+# 1. Gerar API key
+curl -X POST http://localhost:8000/api/v1/billing/keys \
+  -H "Content-Type: application/json" \
+  -d '{"email": "seu@email.com"}'
+
+# 2. Usar nos endpoints
+curl -X POST http://localhost:8000/api/v1/map-data \
+  -H "X-API-Key: lgpd_sua_key" \
+  -H "Content-Type: application/json" \
+  -d '{"data": [{"key": "cpf", "value": "123.456.789-00"}]}'
 ```
 
----
-
-## 🔌 Endpoints da API
+**Endpoints principais:**
 
 ```
-GET  /health                      — Status da API
-GET  /docs                        — Swagger UI interativo
-
 POST /api/v1/map-data             — Mapeamento de dados pessoais
-POST /api/v1/map-data/upload      — Upload CSV para análise
+POST /api/v1/map-data/upload      — Upload CSV/JSON para análise
 
-POST /api/v1/dpia/generate        — Gerar RIPD (JSON)
+POST /api/v1/dpia/generate        — Gerar RIPD completo (JSON)
 POST /api/v1/dpia/generate/pdf    — Gerar RIPD (PDF download)
-POST /api/v1/dpia/risk-assessment — Avaliação rápida de risco
 
-POST /api/v1/dsr/analyze          — Analisar solicitação de direito do titular
-GET  /api/v1/dsr/types            — Listar tipos de direitos (Art. 18)
+POST /api/v1/dsr/analyze          — Analisar solicitação de titular (Art. 18)
 
-GET  /api/v1/history/mapping      — Histórico de auditorias de mapeamento
-GET  /api/v1/history/mapping/{id} — Detalhes de uma auditoria
-GET  /api/v1/history/dpia         — Histórico de DPIAs
-GET  /api/v1/history/dpia/{id}    — Detalhes de um DPIA
+GET  /api/v1/billing/keys         — Gerar API key gratuita
+GET  /api/v1/billing/status       — Ver uso e plano atual
+POST /api/v1/billing/checkout     — Upgrade para Pro (Stripe)
 ```
 
 ---
 
-## 🛠️ Stack
+## 🛠️ Stack — 100% gratuita e open source
 
-| Camada | Tecnologia | Custo |
-|---|---|---|
-| Backend | Python 3.11 + FastAPI | Gratuito |
-| IA | LangChain + Ollama (llama3.1 / Mistral) | Gratuito |
-| Frontend | Streamlit | Gratuito |
-| Banco | SQLite (stdlib) | Gratuito |
-| PDF | ReportLab | Gratuito |
-| Deploy | Docker Compose | Gratuito |
+| Camada | Tecnologia |
+|---|---|
+| Backend | Python 3.11 + FastAPI |
+| IA | LangChain + Ollama (llama3.1:8b / Mistral) |
+| Frontend | Streamlit |
+| Banco | SQLite (zero configuração) |
+| PDF | ReportLab |
+| Pagamentos | Stripe (plano Pro) |
+| Deploy | Docker Compose |
 
-> **Zero dependência de API externa.** Tudo roda localmente.
-
----
-
-## ⚙️ Configuração (`.env`)
-
-```env
-OLLAMA_BASE_URL=http://localhost:11434
-OLLAMA_MODEL=llama3.1:8b        # ou mistral, llama3:8b
-LLM_TEMPERATURE=0.1
-DEBUG=false
-LOG_LEVEL=INFO
-```
+> **Zero dependência de API externa.** A IA roda localmente — seus dados nunca saem do seu servidor.
 
 ---
 
@@ -133,7 +146,7 @@ LOG_LEVEL=INFO
 
 ```bash
 pytest tests/ -v
-# 8 passed
+# 29 passed
 ```
 
 ---
@@ -141,22 +154,24 @@ pytest tests/ -v
 ## 🗺️ Roadmap
 
 - [x] Core API (FastAPI + LangChain + Ollama)
-- [x] Data Mapping endpoint
+- [x] Data Mapping com score de conformidade
 - [x] DPIA/RIPD com exportação PDF
 - [x] DSR — Direitos do Titular (Art. 18)
-- [x] Histórico de auditorias (SQLite)
+- [x] Histórico com gráficos e filtros
 - [x] Frontend Streamlit (5 abas)
 - [x] Docker Compose
+- [x] Freemium com API keys + Stripe Pro (R$97/mês)
+- [x] Quota enforcement por plano
 - [ ] Autenticação JWT (multi-tenant)
-- [ ] Dashboard analytics
+- [ ] Notificações por email (quota, relatórios)
 - [ ] Suporte a GDPR (europeu)
-- [ ] Plano freemium via Stripe
+- [ ] Deploy one-click Railway / Render
 
 ---
 
 ## 🤝 Como Contribuir
 
-Confira [CONTRIBUTING.md](./CONTRIBUTING.md). PRs são bem-vindas!
+PRs são muito bem-vindas! Veja [CONTRIBUTING.md](./CONTRIBUTING.md).
 
 Issues e sugestões: [github.com/ldsjunior-ui/lgpd-sentinel-ai/issues](https://github.com/ldsjunior-ui/lgpd-sentinel-ai/issues)
 
@@ -164,9 +179,11 @@ Issues e sugestões: [github.com/ldsjunior-ui/lgpd-sentinel-ai/issues](https://g
 
 ## 📄 Licença
 
-**Apache License 2.0** — use, modifique e distribua livremente.
-Veja [LICENSE](./LICENSE) para detalhes.
+**Apache License 2.0** — use, modifique e distribua livremente, inclusive em produtos comerciais.
 
 ---
 
-<p align="center">Feito com ❤️ no Brasil 🇧🇷</p>
+<p align="center">
+  <strong>LGPD Sentinel AI — Compliance automatizado, dados protegidos, empresa segura.</strong><br/>
+  Feito com ❤️ no Brasil 🇧🇷
+</p>
