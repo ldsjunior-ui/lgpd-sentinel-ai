@@ -1,13 +1,21 @@
+<div align="center">
+
 [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 [![Python](https://img.shields.io/badge/Python-3.11+-blue.svg)](https://python.org)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.111-green.svg)](https://fastapi.tiangolo.com)
 [![Tests](https://img.shields.io/badge/tests-29%20passed-brightgreen.svg)](./tests/)
 [![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](http://makeapullrequest.com)
 [![Product Hunt](https://img.shields.io/badge/Product%20Hunt-Featured-orange.svg)](https://www.producthunt.com/posts/lgpd-sentinel-ai)
+[![GitHub Stars](https://img.shields.io/github/stars/ldsjunior-ui/lgpd-sentinel-ai?style=social)](https://github.com/ldsjunior-ui/lgpd-sentinel-ai/stargazers)
 
 # LGPD Sentinel AI 🛡️
 
 > **Auditorias LGPD automatizadas com IA local — nenhum dado sai do seu servidor.**
+
+**Se este projeto te ajuda ou te parece útil, uma ⭐ faz enorme diferença para o alcance do projeto!**
+[![Star no GitHub](https://img.shields.io/badge/⭐%20Dar%20uma%20star-ldsjunior--ui%2Flgpd--sentinel--ai-yellow?style=for-the-badge&logo=github)](https://github.com/ldsjunior-ui/lgpd-sentinel-ai/stargazers)
+
+</div>
 
 Substitua dias de trabalho manual por minutos. O LGPD Sentinel AI gera **Data Mapping**, **RIPD/DPIA**, analisa **direitos dos titulares** e exporta relatórios em PDF — tudo rodando com IA 100% local via Ollama.
 
@@ -187,3 +195,15 @@ Issues e sugestões: [github.com/ldsjunior-ui/lgpd-sentinel-ai/issues](https://g
   <strong>LGPD Sentinel AI — Compliance automatizado, dados protegidos, empresa segura.</strong><br/>
   Feito com ❤️ no Brasil 🇧🇷
 </p>
+
+---
+
+<div align="center">
+
+### Gostou do projeto? Uma ⭐ ajuda a chegar em mais DPOs e times de compliance!
+
+[![Star no GitHub](https://img.shields.io/badge/⭐%20Dar%20uma%20star-yellow?style=for-the-badge&logo=github)](https://github.com/ldsjunior-ui/lgpd-sentinel-ai/stargazers)
+[![Sponsor](https://img.shields.io/badge/💙%20Sponsor-GitHub%20Sponsors-ea4aaa?style=for-the-badge&logo=github-sponsors)](https://github.com/sponsors/ldsjunior-ui)
+[![Discussions](https://img.shields.io/badge/💬%20Discussões-GitHub-blue?style=for-the-badge&logo=github)](https://github.com/ldsjunior-ui/lgpd-sentinel-ai/discussions)
+
+</div>
