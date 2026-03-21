@@ -8,22 +8,26 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 
-from src.api.routes import billing, dpia, dsr, history, mapping, stats
+from src.api.routes import billing, dpia, dsr, healthcheck, history, mapping, stats
 from src.core.database import init_db
+from src.core.healthcheck import start_scheduler, stop_scheduler
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     """Startup e shutdown da aplicação."""
     init_db()
+    start_scheduler()
     print("\n" + "=" * 60)
     print("🛡️  LGPD Sentinel AI v0.1.0 — Pronto para auditorias!")
     print("=" * 60)
     print("📖  Docs:        http://localhost:8000/docs")
     print("📊  Stats:       http://localhost:8000/api/v1/stats")
+    print("🩺  Healthcheck: http://localhost:8000/api/v1/healthcheck/latest")
     print("💬  Comunidade:  https://github.com/ldsjunior-ui/lgpd-sentinel-ai/discussions")
     print("⭐  GitHub:      https://github.com/ldsjunior-ui/lgpd-sentinel-ai")
     print("=" * 60 + "\n")
     yield
+    stop_scheduler()
 
 
 # Metadados da API
@@ -97,6 +101,7 @@ app.include_router(history.router, prefix="/api/v1", tags=["Histórico"])
 app.include_router(dsr.router, prefix="/api/v1", tags=["DSR"])
 app.include_router(billing.router, prefix="/api/v1", tags=["Billing / Planos"])
 app.include_router(stats.router, prefix="/api/v1", tags=["Sistema"])
+app.include_router(healthcheck.router, prefix="/api/v1", tags=["Healthcheck"])
 
 if __name__ == "__main__":
     uvicorn.run(

@@ -133,6 +133,34 @@ class ErrorResponse(BaseModel):
     detail: str
 
 
+# ---------------------------------------------------------------------------
+# Healthcheck
+# ---------------------------------------------------------------------------
+
+
+class HealthCheckStatus(str, Enum):
+    """Overall healthcheck status."""
+
+    HEALTHY = "healthy"
+    DEGRADED = "degraded"
+    UNHEALTHY = "unhealthy"
+
+
+class HealthCheckResult(BaseModel):
+    """Single healthcheck result."""
+
+    id: int
+    check_time: str
+    overall_status: HealthCheckStatus
+    api_ok: bool
+    ollama_ok: bool
+    database_ok: bool
+    disk_ok: bool
+    endpoints_ok: bool
+    details: dict[str, Any] = Field(default_factory=dict)
+    duration_ms: int
+
+
 __all__ = [
     "DataItem",
     "DataMappingRequest",
@@ -140,6 +168,8 @@ __all__ = [
     "DPIARequest",
     "DPIAResponse",
     "ErrorResponse",
+    "HealthCheckResult",
+    "HealthCheckStatus",
     "LGPDCategory",
     "RiskLevel",
 ]

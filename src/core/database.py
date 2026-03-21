@@ -65,6 +65,19 @@ def init_db(db_path: Path = DB_PATH) -> None:
                 dsrs        INTEGER NOT NULL DEFAULT 0,
                 UNIQUE(api_key, month)
             );
+
+            CREATE TABLE IF NOT EXISTS health_checks (
+                id              INTEGER PRIMARY KEY AUTOINCREMENT,
+                check_time      TEXT NOT NULL DEFAULT (strftime('%Y-%m-%dT%H:%M:%SZ', 'now')),
+                overall_status  TEXT NOT NULL,
+                api_ok          INTEGER NOT NULL DEFAULT 0,
+                ollama_ok       INTEGER NOT NULL DEFAULT 0,
+                database_ok     INTEGER NOT NULL DEFAULT 0,
+                disk_ok         INTEGER NOT NULL DEFAULT 0,
+                endpoints_ok    INTEGER NOT NULL DEFAULT 0,
+                details_json    TEXT NOT NULL DEFAULT '{}',
+                duration_ms     INTEGER
+            );
         """)
     # Migration: add trial_ends_at to existing installs that predate this column
     with sqlite3.connect(db_path) as conn:
@@ -276,3 +289,69 @@ def get_usage(api_key: str, db_path: Path = DB_PATH) -> dict[str, int]:
         if row:
             return dict(row)
         return {"mappings": 0, "dpias": 0, "dsrs": 0}
+
+
+# ─── Health checks ────────────────────────────────────────────────────────────
+
+
+def save_health_check(
+    overall_status: str,
+    api_ok: bool,
+    ollama_ok: bool,
+    database_ok: bool,
+    disk_ok: bool,
+    endpoints_ok: bool,
+    details: dict[str, Any],
+    duration_ms: int,
+    db_path: Path = DB_PATH,
+) -> int:
+    """Persist a healthcheck result and return its ID."""
+    with get_conn(db_path) as conn:
+        cur = conn.execute(
+            """
+            INSERT INTO health_checks
+                (overall_status, api_ok, ollama_ok, database_ok, disk_ok, endpoints_ok, details_json, duration_ms)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (overall_status, int(api_ok), int(ollama_ok), int(database_ok),
+             int(disk_ok), int(endpoints_ok), json.dumps(details), duration_ms),
+        )
+        return cur.lastrowid
+
+
+def list_health_checks(limit: int = 50, db_path: Path = DB_PATH) -> list[dict[str, Any]]:
+    """Return the most recent healthcheck results."""
+    with get_conn(db_path) as conn:
+        rows = conn.execute(
+            "SELECT * FROM health_checks ORDER BY id DESC LIMIT ?",
+            (limit,),
+        ).fetchall()
+        results = []
+        for r in rows:
+            d = dict(r)
+            d["details"] = json.loads(d.pop("details_json"))
+            results.append(d)
+        return results
+
+
+def get_latest_health_check(db_path: Path = DB_PATH) -> dict[str, Any] | None:
+    """Return the single most recent healthcheck result, or None."""
+    with get_conn(db_path) as conn:
+        row = conn.execute(
+            "SELECT * FROM health_checks ORDER BY id DESC LIMIT 1"
+        ).fetchone()
+        if not row:
+            return None
+        d = dict(row)
+        d["details"] = json.loads(d.pop("details_json"))
+        return d
+
+
+def prune_health_checks(days: int = 30, db_path: Path = DB_PATH) -> int:
+    """Delete healthcheck results older than N days. Returns count deleted."""
+    with get_conn(db_path) as conn:
+        cur = conn.execute(
+            "DELETE FROM health_checks WHERE check_time < strftime('%Y-%m-%dT%H:%M:%SZ', 'now', ?)",
+            (f"-{days} days",),
+        )
+        return cur.rowcount

@@ -31,6 +31,9 @@ python-dotenv==1.0.1
 httpx==0.27.0
 aiofiles==23.2.1
 
+# Scheduler (healthcheck a cada 15 min)
+apscheduler==3.10.4
+
 # Testes
 pytest==8.2.0
 pytest-asyncio==0.23.6

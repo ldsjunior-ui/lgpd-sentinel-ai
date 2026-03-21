@@ -71,6 +71,12 @@ class Settings(BaseSettings):
     SMTP_FROM: str = Field(default="")                  # deixe vazio = usa SMTP_USER
     NOTIFICATION_EMAIL: str = Field(default="leo.jr_souza@hotmail.com")
 
+    # Healthcheck scheduler
+    HEALTHCHECK_ENABLED: bool = Field(default=True)
+    HEALTHCHECK_INTERVAL_MINUTES: int = Field(default=15)
+    HEALTHCHECK_HISTORY_DAYS: int = Field(default=30)
+    HEALTHCHECK_DISK_WARNING_GB: float = Field(default=1.0)
+
 
 @lru_cache()
 def get_settings() -> Settings:
