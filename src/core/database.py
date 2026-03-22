@@ -8,6 +8,7 @@ Uses the standard library sqlite3 — zero extra dependencies.
 
 import json
 import logging
+import os
 import secrets
 import sqlite3
 from contextlib import contextmanager
@@ -17,7 +18,22 @@ from typing import Any, Generator
 
 logger = logging.getLogger(__name__)
 
-DB_PATH = Path(__file__).parent.parent.parent / "data" / "sentinel.db"
+
+def _resolve_db_path() -> Path:
+    """Resolve DB path: env var > config > fallback to project-relative."""
+    env = os.environ.get("LGPD_DB_PATH")
+    if env:
+        return Path(env)
+    try:
+        from src.core.config import settings
+        if settings.DB_PATH:
+            return Path(settings.DB_PATH)
+    except Exception:
+        pass
+    return Path(__file__).parent.parent.parent / "data" / "sentinel.db"
+
+
+DB_PATH = _resolve_db_path()
 
 
 def init_db(db_path: Path = DB_PATH) -> None:

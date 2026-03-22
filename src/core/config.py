@@ -5,11 +5,28 @@
 
 """Configuration management for LGPD Sentinel AI."""
 
+import os
 from functools import lru_cache
+from pathlib import Path
 from typing import Optional
 
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+
+def _default_data_dir() -> str:
+    """Return platform-appropriate app data directory."""
+    env = os.environ.get("LGPD_DATA_DIR")
+    if env:
+        return env
+    if os.name == "nt":  # Windows
+        base = os.environ.get("LOCALAPPDATA", os.path.expanduser("~"))
+        return str(Path(base) / "LGPD Sentinel AI")
+    elif os.uname().sysname == "Darwin":  # macOS
+        return str(Path.home() / "Library" / "Application Support" / "LGPD Sentinel AI")
+    else:  # Linux
+        xdg = os.environ.get("XDG_DATA_HOME", str(Path.home() / ".local" / "share"))
+        return str(Path(xdg) / "lgpd-sentinel-ai")
 
 
 class Settings(BaseSettings):
@@ -33,7 +50,7 @@ class Settings(BaseSettings):
     CORS_ORIGINS: list[str] = Field(default=["*"])
 
     # Ollama / LLM settings (local inference, zero-cost)
-    OLLAMA_BASE_URL: str = Field(default="http://ollama:11434")
+    OLLAMA_BASE_URL: str = Field(default="http://localhost:11434")
     OLLAMA_MODEL: str = Field(default="mistral")
     LLM_TEMPERATURE: float = Field(default=0.1, ge=0.0, le=2.0)
     LLM_MAX_TOKENS: int = Field(default=4096)
@@ -43,8 +60,12 @@ class Settings(BaseSettings):
     SUPABASE_ANON_KEY: Optional[str] = Field(default=None)
     SUPABASE_SERVICE_KEY: Optional[str] = Field(default=None)
 
+    # Data directory (platform-aware)
+    DATA_DIR: str = Field(default_factory=_default_data_dir)
+    DB_PATH: str = Field(default="")  # auto-set from DATA_DIR if empty
+
     # Report / PDF settings
-    REPORTS_DIR: str = Field(default="/tmp/lgpd_reports")
+    REPORTS_DIR: str = Field(default="")  # auto-set from DATA_DIR if empty
     REPORT_COMPANY_NAME: str = Field(default="Empresa")
 
     # LGPD compliance risk thresholds
@@ -75,7 +96,16 @@ class Settings(BaseSettings):
 @lru_cache()
 def get_settings() -> Settings:
     """Return cached Settings instance. Use as FastAPI dependency."""
-    return Settings()
+    s = Settings()
+    # Auto-set paths from DATA_DIR if not explicitly configured
+    data_dir = Path(s.DATA_DIR)
+    data_dir.mkdir(parents=True, exist_ok=True)
+    if not s.DB_PATH:
+        s.DB_PATH = str(data_dir / "sentinel.db")
+    if not s.REPORTS_DIR:
+        s.REPORTS_DIR = str(data_dir / "reports")
+    Path(s.REPORTS_DIR).mkdir(parents=True, exist_ok=True)
+    return s
 
 
 # Convenience singleton for direct imports

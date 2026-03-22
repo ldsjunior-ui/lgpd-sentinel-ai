@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <!-- Identificador único do serviço -->
+    <key>Label</key>
+    <string>com.lgpdsentinel</string>
+
+    <!-- Script de inicialização -->
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/bash</string>
+        <string>/Users/leonardobergonzidesouzajunior/Documents/lgpd-sentinel-ai/start.sh</string>
+    </array>
+
+    <!-- Iniciar automaticamente no boot -->
+    <key>RunAtLoad</key>
+    <true/>
+
+    <!-- Reiniciar automaticamente se crashar -->
+    <key>KeepAlive</key>
+    <dict>
+        <key>SuccessfulExit</key>
+        <false/>
+    </dict>
+
+    <!-- Aguardar 10 segundos antes de reiniciar após crash -->
+    <key>ThrottleInterval</key>
+    <integer>10</integer>
+
+    <!-- Diretório de trabalho -->
+    <key>WorkingDirectory</key>
+    <string>/Users/leonardobergonzidesouzajunior/Documents/lgpd-sentinel-ai</string>
+
+    <!-- Logs -->
+    <key>StandardOutPath</key>
+    <string>/tmp/lgpd-sentinel-service.log</string>
+
+    <key>StandardErrorPath</key>
+    <string>/tmp/lgpd-sentinel-service-error.log</string>
+
+    <!-- Variáveis de ambiente -->
+    <key>EnvironmentVariables</key>
+    <dict>
+        <key>PATH</key>
+        <string>/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin:/opt/homebrew/bin</string>
+        <key>HOME</key>
+        <string>/Users/leonardobergonzidesouzajunior</string>
+    </dict>
+</dict>
+</plist>
