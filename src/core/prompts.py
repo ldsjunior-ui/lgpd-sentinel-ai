@@ -7,7 +7,10 @@ All prompts are designed to elicit structured, compliance-focused responses
 from local LLMs (Mistral/Llama via Ollama).
 """
 
-from langchain.prompts import PromptTemplate
+try:
+    from langchain.prompts import PromptTemplate
+except ImportError:
+    from langchain_core.prompts import PromptTemplate
 
 # ---------------------------------------------------------------------------
 # Data Mapping Prompt (Mapeamento de Dados Pessoais)
