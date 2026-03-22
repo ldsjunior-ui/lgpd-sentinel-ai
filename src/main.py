@@ -8,7 +8,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 
-from src.api.routes import billing, dpia, dsr, history, mapping, stats
+from src.api.routes import billing, dpia, dsr, history, mapping, stats, usage_report
 from src.core.database import init_db
 
 @asynccontextmanager
@@ -97,6 +97,7 @@ app.include_router(history.router, prefix="/api/v1", tags=["Histórico"])
 app.include_router(dsr.router, prefix="/api/v1", tags=["DSR"])
 app.include_router(billing.router, prefix="/api/v1", tags=["Billing / Planos"])
 app.include_router(stats.router, prefix="/api/v1", tags=["Sistema"])
+app.include_router(usage_report.router, prefix="/api/v1", tags=["Sistema"])
 
 if __name__ == "__main__":
     uvicorn.run(

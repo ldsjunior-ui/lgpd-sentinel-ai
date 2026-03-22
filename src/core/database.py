@@ -276,3 +276,141 @@ def get_usage(api_key: str, db_path: Path = DB_PATH) -> dict[str, int]:
         if row:
             return dict(row)
         return {"mappings": 0, "dpias": 0, "dsrs": 0}
+
+
+# ─── Usage report ────────────────────────────────────────────────────────────
+
+
+def get_usage_report(db_path: Path = DB_PATH) -> dict[str, Any]:
+    """Return aggregated usage report data for all users."""
+    report: dict[str, Any] = {
+        "total_users": 0,
+        "active_users": 0,
+        "free_users": 0,
+        "pro_users": 0,
+        "trial_users": 0,
+        "total_mappings": 0,
+        "total_dpias": 0,
+        "total_dsrs": 0,
+        "total_operations": 0,
+        "monthly_usage": [],
+        "users_detail": [],
+        "registrations_per_month": [],
+    }
+
+    if not db_path.exists():
+        return report
+
+    now = datetime.utcnow()
+
+    with get_conn(db_path) as conn:
+        # ── User counts ──
+        row = conn.execute("SELECT COUNT(*) as n FROM api_keys").fetchone()
+        report["total_users"] = row["n"] if row else 0
+
+        row = conn.execute("SELECT COUNT(*) as n FROM api_keys WHERE active = 1").fetchone()
+        report["active_users"] = row["n"] if row else 0
+
+        row = conn.execute("SELECT COUNT(*) as n FROM api_keys WHERE plan = 'free'").fetchone()
+        report["free_users"] = row["n"] if row else 0
+
+        row = conn.execute("SELECT COUNT(*) as n FROM api_keys WHERE plan = 'pro'").fetchone()
+        report["pro_users"] = row["n"] if row else 0
+
+        # Trial users (free plan with active trial)
+        now_str = now.strftime("%Y-%m-%dT%H:%M:%SZ")
+        row = conn.execute(
+            "SELECT COUNT(*) as n FROM api_keys WHERE plan = 'free' AND trial_ends_at > ?",
+            (now_str,),
+        ).fetchone()
+        report["trial_users"] = row["n"] if row else 0
+
+        # ── Global totals from usage_monthly ──
+        row = conn.execute(
+            """
+            SELECT COALESCE(SUM(mappings), 0) as m,
+                   COALESCE(SUM(dpias), 0) as d,
+                   COALESCE(SUM(dsrs), 0) as s
+            FROM usage_monthly
+            """
+        ).fetchone()
+        if row:
+            report["total_mappings"] = row["m"]
+            report["total_dpias"] = row["d"]
+            report["total_dsrs"] = row["s"]
+            report["total_operations"] = row["m"] + row["d"] + row["s"]
+
+        # ── Monthly usage trend (last 12 months) ──
+        rows = conn.execute(
+            """
+            SELECT month,
+                   COALESCE(SUM(mappings), 0) as mappings,
+                   COALESCE(SUM(dpias), 0) as dpias,
+                   COALESCE(SUM(dsrs), 0) as dsrs
+            FROM usage_monthly
+            GROUP BY month
+            ORDER BY month DESC
+            LIMIT 12
+            """
+        ).fetchall()
+        report["monthly_usage"] = [
+            {
+                "month": r["month"],
+                "mappings": r["mappings"],
+                "dpias": r["dpias"],
+                "dsrs": r["dsrs"],
+                "total": r["mappings"] + r["dpias"] + r["dsrs"],
+            }
+            for r in reversed(rows)
+        ]
+
+        # ── Per-user usage detail ──
+        rows = conn.execute(
+            """
+            SELECT k.api_key, k.plan, k.email, k.active, k.trial_ends_at, k.created_at,
+                   COALESCE(SUM(u.mappings), 0) as total_mappings,
+                   COALESCE(SUM(u.dpias), 0) as total_dpias,
+                   COALESCE(SUM(u.dsrs), 0) as total_dsrs
+            FROM api_keys k
+            LEFT JOIN usage_monthly u ON k.api_key = u.api_key
+            GROUP BY k.api_key
+            ORDER BY k.created_at DESC
+            """
+        ).fetchall()
+        for r in rows:
+            trial_active = False
+            if r["trial_ends_at"]:
+                try:
+                    trial_end = datetime.strptime(r["trial_ends_at"], "%Y-%m-%dT%H:%M:%SZ")
+                    trial_active = now < trial_end
+                except ValueError:
+                    pass
+            effective_plan = "trial" if (r["plan"] == "free" and trial_active) else r["plan"]
+            report["users_detail"].append({
+                "api_key_preview": r["api_key"][:12] + "...",
+                "email": r["email"] or "—",
+                "plan": effective_plan,
+                "active": bool(r["active"]),
+                "created_at": r["created_at"],
+                "total_mappings": r["total_mappings"],
+                "total_dpias": r["total_dpias"],
+                "total_dsrs": r["total_dsrs"],
+                "total_operations": r["total_mappings"] + r["total_dpias"] + r["total_dsrs"],
+            })
+
+        # ── Registrations per month ──
+        rows = conn.execute(
+            """
+            SELECT substr(created_at, 1, 7) as month, COUNT(*) as registrations
+            FROM api_keys
+            GROUP BY month
+            ORDER BY month DESC
+            LIMIT 12
+            """
+        ).fetchall()
+        report["registrations_per_month"] = [
+            {"month": r["month"], "registrations": r["registrations"]}
+            for r in reversed(rows)
+        ]
+
+    return report

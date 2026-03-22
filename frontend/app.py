@@ -192,12 +192,13 @@ with st.sidebar:
     st.markdown("[GitHub](https://github.com/ldsjunior-ui/lgpd-sentinel-ai) | [Docs](/docs)")
 
 # ─── Abas principais ──────────────────────────────────────────────────────────
-tab1, tab2, tab3, tab4, tab5 = st.tabs([
+tab1, tab2, tab3, tab4, tab5, tab6 = st.tabs([
     "📊 Mapeamento de Dados",
     "🔍 DPIA / Avaliação de Impacto",
     "📝 Direitos do Titular (DSR)",
     "📂 Histórico",
-    "📋 Sobre a LGPD"
+    "📈 Relatório de Uso",
+    "📋 Sobre a LGPD",
 ])
 
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -722,9 +723,119 @@ with tab4:
 
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# TAB 5 — SOBRE A LGPD
+# TAB 5 — RELATÓRIO DE USO
 # ═══════════════════════════════════════════════════════════════════════════════
 with tab5:
+    st.header("📈 Relatório de Uso e Adoção")
+    st.markdown(
+        "Acompanhe quantas pessoas estão utilizando o sistema, "
+        "operações realizadas e tendências de adoção."
+    )
+
+    if st.button("🔄 Atualizar relatório", key="refresh_usage"):
+        st.session_state.pop("usage_report", None)
+
+    if "usage_report" not in st.session_state:
+        try:
+            r = httpx.get(f"{API_BASE}/usage-report", timeout=10)
+            st.session_state["usage_report"] = r.json() if r.status_code == 200 else None
+        except Exception:
+            st.session_state["usage_report"] = None
+
+    report = st.session_state.get("usage_report")
+
+    if not report:
+        st.warning("⚠️ Não foi possível carregar o relatório. Verifique se a API está online.")
+    else:
+        summary = report.get("summary", {})
+
+        # ── Métricas de usuários ──
+        st.subheader("👥 Usuários")
+        u1, u2, u3, u4, u5 = st.columns(5)
+        u1.metric("Total de Usuários", summary.get("total_users", 0))
+        u2.metric("Usuários Ativos", summary.get("active_users", 0))
+        u3.metric("Plano Free", summary.get("free_users", 0))
+        u4.metric("Plano Pro", summary.get("pro_users", 0))
+        u5.metric("Em Trial", summary.get("trial_users", 0))
+
+        st.markdown("---")
+
+        # ── Métricas de operações ──
+        st.subheader("⚡ Operações Realizadas")
+        o1, o2, o3, o4 = st.columns(4)
+        o1.metric("Total de Operações", summary.get("total_operations", 0))
+        o2.metric("📊 Mapeamentos", summary.get("total_mappings", 0))
+        o3.metric("🔍 DPIAs", summary.get("total_dpias", 0))
+        o4.metric("📝 DSRs", summary.get("total_dsrs", 0))
+
+        st.markdown("---")
+
+        # ── Gráfico: Uso mensal ──
+        monthly = report.get("monthly_usage", [])
+        if monthly:
+            st.subheader("📊 Uso Mensal (últimos 12 meses)")
+            df_monthly = pd.DataFrame(monthly)
+            df_monthly = df_monthly.set_index("month")
+
+            chart_c1, chart_c2 = st.columns(2)
+            with chart_c1:
+                st.markdown("**Operações por tipo**")
+                st.bar_chart(df_monthly[["mappings", "dpias", "dsrs"]].rename(
+                    columns={"mappings": "Mapeamentos", "dpias": "DPIAs", "dsrs": "DSRs"}
+                ))
+            with chart_c2:
+                st.markdown("**Total de operações por mês**")
+                st.line_chart(df_monthly[["total"]].rename(columns={"total": "Total"}))
+
+        # ── Gráfico: Novos registros por mês ──
+        registrations = report.get("registrations_per_month", [])
+        if registrations:
+            st.subheader("📥 Novos Usuários por Mês")
+            df_reg = pd.DataFrame(registrations).set_index("month")
+            st.bar_chart(df_reg.rename(columns={"registrations": "Novos Usuários"}))
+
+        st.markdown("---")
+
+        # ── Tabela de usuários ──
+        users = report.get("users_detail", [])
+        if users:
+            st.subheader("👤 Detalhamento por Usuário")
+            df_users = pd.DataFrame(users)
+            df_users = df_users.rename(columns={
+                "api_key_preview": "API Key",
+                "email": "E-mail",
+                "plan": "Plano",
+                "active": "Ativo",
+                "created_at": "Registrado em",
+                "total_mappings": "Mapeamentos",
+                "total_dpias": "DPIAs",
+                "total_dsrs": "DSRs",
+                "total_operations": "Total Ops",
+            })
+            # Format plan labels
+            plan_labels = {"free": "🆓 Free", "pro": "⭐ Pro", "trial": "🔄 Trial"}
+            df_users["Plano"] = df_users["Plano"].map(lambda x: plan_labels.get(x, x))
+            df_users["Ativo"] = df_users["Ativo"].map({True: "✅", False: "❌"})
+            df_users["Registrado em"] = df_users["Registrado em"].apply(lambda x: str(x)[:10] if x else "—")
+
+            st.dataframe(
+                df_users,
+                use_container_width=True,
+                hide_index=True,
+                column_config={
+                    "Total Ops": st.column_config.NumberColumn(format="%d"),
+                },
+            )
+        else:
+            st.info("Nenhum usuário registrado ainda.")
+
+        st.caption(f"Relatório gerado em: {report.get('generated_at', '—')}")
+
+
+# ═══════════════════════════════════════════════════════════════════════════════
+# TAB 6 — SOBRE A LGPD
+# ═══════════════════════════════════════════════════════════════════════════════
+with tab6:
     st.header("📋 Sobre a LGPD")
 
     col1, col2 = st.columns(2)
