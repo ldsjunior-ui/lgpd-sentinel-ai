@@ -13,7 +13,7 @@ pydantic-settings==2.7.1
 # IA - LangChain + Ollama (inferência local gratuita)
 langchain==0.3.14
 langchain-community==0.3.14
-langchain-core==0.3.29
+langchain-core==0.3.33
 langchain-ollama==0.2.3
 ollama==0.4.7
 
