@@ -14,7 +14,7 @@ from enum import Enum
 from typing import Any, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from langchain_community.llms import Ollama
+from langchain_ollama import OllamaLLM as Ollama
 from pydantic import BaseModel, Field
 
 from src.core.config import Settings, get_settings

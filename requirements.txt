@@ -2,35 +2,39 @@
 # 100% open source, zero custo
 
 # API Framework
-fastapi==0.111.0
-uvicorn[standard]==0.29.0
-python-multipart==0.0.9
+fastapi==0.115.6
+uvicorn[standard]==0.32.1
+python-multipart==0.0.19
 
 # Validação de dados
-pydantic==2.7.1
-pydantic-settings==2.2.1
+pydantic==2.10.4
+pydantic-settings==2.7.1
 
 # IA - LangChain + Ollama (inferência local gratuita)
-langchain==0.2.0
-langchain-community==0.2.0
-langchain-core==0.2.0
-ollama==0.2.0
+langchain==0.3.14
+langchain-community==0.3.14
+langchain-core==0.3.29
+langchain-ollama==0.2.3
+ollama==0.4.7
 
 # Banco de dados - Supabase (free tier)
-supabase==2.4.6
+supabase==2.11.0
 
 # Geração de PDF para relatórios
-reportlab==4.1.0
+reportlab==4.2.5
 
 # Parsing de arquivos
-pandas==2.2.2
+pandas==2.2.3
 python-csv==0.0.13
 
 # Utilitários
 python-dotenv==1.0.1
-httpx==0.27.0
-aiofiles==23.2.1
+httpx==0.28.1
+aiofiles==24.1.0
+
+# Billing
+stripe==11.4.1
 
 # Testes
-pytest==8.2.0
-pytest-asyncio==0.23.6
+pytest==8.3.4
+pytest-asyncio==0.24.0

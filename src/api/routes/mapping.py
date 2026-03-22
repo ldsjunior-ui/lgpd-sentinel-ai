@@ -11,7 +11,7 @@ from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, status
 import pandas as pd
 from io import StringIO
 
-from langchain_community.llms import Ollama
+from langchain_ollama import OllamaLLM as Ollama
 
 from src.core.config import Settings, get_settings
 from src.core.prompts import DATA_MAPPING_TEMPLATE

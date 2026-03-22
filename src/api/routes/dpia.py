@@ -14,7 +14,7 @@ from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import Response
-from langchain_community.llms import Ollama
+from langchain_ollama import OllamaLLM as Ollama
 
 from src.core.pdf_report import generate_dpia_pdf
 
