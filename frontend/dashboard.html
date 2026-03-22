@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+<title>LGPD Sentinel AI — Dashboard</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+<style>
+  :root {
+    --bg: #0f1117;
+    --card: #1a1a2e;
+    --card2: #16213e;
+    --accent: #00c853;
+    --accent2: #4fc3f7;
+    --danger: #ff4b4b;
+    --warn: #ffa500;
+    --text: #e0e0e0;
+    --muted: #888;
+    --radius: 12px;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    padding-bottom: 2rem;
+  }
+
+  /* ── Header ── */
+  .header {
+    background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+    padding: 1.2rem 1rem;
+    text-align: center;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    box-shadow: 0 2px 12px rgba(0,0,0,.4);
+  }
+  .header h1 { font-size: 1.2rem; font-weight: 700; }
+  .header p { font-size: 0.75rem; color: var(--muted); margin-top: .25rem; }
+
+  /* ── Container ── */
+  .container { max-width: 600px; margin: 0 auto; padding: 1rem; }
+
+  /* ── Section ── */
+  .section-title {
+    font-size: .85rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: .05em;
+    color: var(--accent);
+    margin: 1.5rem 0 .75rem;
+    padding-left: .25rem;
+  }
+
+  /* ── Metric Grid ── */
+  .metrics { display: grid; grid-template-columns: repeat(2, 1fr); gap: .6rem; }
+  .metrics.three { grid-template-columns: repeat(3, 1fr); }
+
+  .metric {
+    background: var(--card);
+    border-radius: var(--radius);
+    padding: .9rem .7rem;
+    text-align: center;
+    border: 1px solid rgba(255,255,255,.06);
+  }
+  .metric .value {
+    font-size: 1.6rem;
+    font-weight: 700;
+    line-height: 1.2;
+  }
+  .metric .label {
+    font-size: .7rem;
+    color: var(--muted);
+    margin-top: .2rem;
+  }
+  .metric.highlight { border-color: var(--accent); }
+  .metric .value.green { color: var(--accent); }
+  .metric .value.blue { color: var(--accent2); }
+  .metric .value.orange { color: var(--warn); }
+  .metric .value.red { color: var(--danger); }
+
+  /* ── Charts ── */
+  .chart-card {
+    background: var(--card);
+    border-radius: var(--radius);
+    padding: 1rem;
+    margin-bottom: .8rem;
+    border: 1px solid rgba(255,255,255,.06);
+  }
+  .chart-card h3 {
+    font-size: .8rem;
+    font-weight: 600;
+    margin-bottom: .6rem;
+    color: var(--text);
+  }
+  .chart-card canvas { width: 100% !important; max-height: 220px; }
+
+  /* ── Table ── */
+  .table-card {
+    background: var(--card);
+    border-radius: var(--radius);
+    padding: .8rem;
+    overflow-x: auto;
+    border: 1px solid rgba(255,255,255,.06);
+  }
+  .table-card h3 {
+    font-size: .8rem;
+    font-weight: 600;
+    margin-bottom: .6rem;
+  }
+  table { width: 100%; border-collapse: collapse; font-size: .75rem; }
+  th { text-align: left; color: var(--muted); font-weight: 600; padding: .5rem .4rem; border-bottom: 1px solid rgba(255,255,255,.1); }
+  td { padding: .5rem .4rem; border-bottom: 1px solid rgba(255,255,255,.04); }
+  .badge {
+    display: inline-block;
+    padding: .15rem .45rem;
+    border-radius: 6px;
+    font-size: .65rem;
+    font-weight: 600;
+  }
+  .badge-trial { background: rgba(79,195,247,.15); color: var(--accent2); }
+  .badge-free { background: rgba(255,165,0,.15); color: var(--warn); }
+  .badge-pro { background: rgba(0,200,83,.15); color: var(--accent); }
+
+  /* ── Loading / Error ── */
+  .loading {
+    text-align: center;
+    padding: 4rem 1rem;
+    color: var(--muted);
+  }
+  .loading .spinner {
+    width: 32px; height: 32px;
+    border: 3px solid rgba(255,255,255,.1);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin .8s linear infinite;
+    margin: 0 auto 1rem;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .error-msg {
+    text-align: center;
+    padding: 3rem 1rem;
+    color: var(--danger);
+  }
+
+  /* ── Refresh button ── */
+  .refresh-btn {
+    display: block;
+    width: 100%;
+    padding: .75rem;
+    margin-top: 1rem;
+    background: var(--card2);
+    color: var(--text);
+    border: 1px solid rgba(255,255,255,.1);
+    border-radius: var(--radius);
+    font-size: .85rem;
+    cursor: pointer;
+    text-align: center;
+  }
+  .refresh-btn:active { background: var(--card); }
+
+  /* ── Footer ── */
+  .footer {
+    text-align: center;
+    font-size: .65rem;
+    color: var(--muted);
+    margin-top: 2rem;
+    padding: 0 1rem;
+  }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>LGPD Sentinel AI</h1>
+  <p>Dashboard de Uso e Adocao</p>
+</div>
+
+<div class="container" id="app">
+  <div class="loading" id="loading">
+    <div class="spinner"></div>
+    <p>Carregando dados...</p>
+  </div>
+  <div class="error-msg" id="error" style="display:none">
+    <p>Nao foi possivel conectar a API.</p>
+    <p style="font-size:.75rem;margin-top:.5rem;color:var(--muted)">Verifique se a API esta rodando.</p>
+    <button class="refresh-btn" onclick="loadData()" style="max-width:200px;margin:1rem auto 0">Tentar novamente</button>
+  </div>
+  <div id="content" style="display:none">
+
+    <!-- Users -->
+    <div class="section-title">Usuarios</div>
+    <div class="metrics">
+      <div class="metric highlight">
+        <div class="value green" id="totalUsers">-</div>
+        <div class="label">Total</div>
+      </div>
+      <div class="metric">
+        <div class="value blue" id="activeUsers">-</div>
+        <div class="label">Ativos</div>
+      </div>
+      <div class="metric">
+        <div class="value orange" id="trialUsers">-</div>
+        <div class="label">Trial</div>
+      </div>
+      <div class="metric">
+        <div class="value" id="freeUsers">-</div>
+        <div class="label">Free</div>
+      </div>
+      <div class="metric">
+        <div class="value green" id="proUsers">-</div>
+        <div class="label">Pro</div>
+      </div>
+    </div>
+
+    <!-- Operations -->
+    <div class="section-title">Operacoes</div>
+    <div class="metrics">
+      <div class="metric highlight">
+        <div class="value green" id="totalOps">-</div>
+        <div class="label">Total</div>
+      </div>
+      <div class="metric">
+        <div class="value blue" id="totalMappings">-</div>
+        <div class="label">Mapeamentos</div>
+      </div>
+      <div class="metric">
+        <div class="value orange" id="totalDpias">-</div>
+        <div class="label">DPIAs</div>
+      </div>
+      <div class="metric">
+        <div class="value" id="totalDsrs">-</div>
+        <div class="label">DSRs</div>
+      </div>
+    </div>
+
+    <!-- Monthly chart -->
+    <div class="section-title">Uso Mensal</div>
+    <div class="chart-card">
+      <h3>Operacoes por mes</h3>
+      <canvas id="monthlyChart"></canvas>
+    </div>
+
+    <!-- Registrations chart -->
+    <div class="chart-card">
+      <h3>Novos usuarios por mes</h3>
+      <canvas id="regChart"></canvas>
+    </div>
+
+    <!-- Users table -->
+    <div class="section-title">Usuarios</div>
+    <div class="table-card">
+      <h3>Detalhamento por usuario</h3>
+      <table>
+        <thead>
+          <tr><th>E-mail</th><th>Plano</th><th>Ops</th></tr>
+        </thead>
+        <tbody id="usersTable"></tbody>
+      </table>
+    </div>
+
+    <button class="refresh-btn" onclick="loadData()">Atualizar</button>
+
+    <div class="footer" id="footer"></div>
+  </div>
+</div>
+
+<script>
+const API_BASE = window.location.origin + '/api/v1';
+let monthlyChartInstance = null;
+let regChartInstance = null;
+
+async function loadData() {
+  const loading = document.getElementById('loading');
+  const error = document.getElementById('error');
+  const content = document.getElementById('content');
+
+  loading.style.display = 'block';
+  error.style.display = 'none';
+  content.style.display = 'none';
+
+  try {
+    const res = await fetch(API_BASE + '/usage-report');
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const data = await res.json();
+    renderDashboard(data);
+    loading.style.display = 'none';
+    content.style.display = 'block';
+  } catch (e) {
+    loading.style.display = 'none';
+    error.style.display = 'block';
+  }
+}
+
+function renderDashboard(data) {
+  const s = data.summary;
+
+  // Metrics
+  document.getElementById('totalUsers').textContent = s.total_users;
+  document.getElementById('activeUsers').textContent = s.active_users;
+  document.getElementById('trialUsers').textContent = s.trial_users;
+  document.getElementById('freeUsers').textContent = s.free_users;
+  document.getElementById('proUsers').textContent = s.pro_users;
+  document.getElementById('totalOps').textContent = s.total_operations;
+  document.getElementById('totalMappings').textContent = s.total_mappings;
+  document.getElementById('totalDpias').textContent = s.total_dpias;
+  document.getElementById('totalDsrs').textContent = s.total_dsrs;
+
+  // Monthly chart
+  const monthly = data.monthly_usage || [];
+  if (monthlyChartInstance) monthlyChartInstance.destroy();
+  const mCtx = document.getElementById('monthlyChart').getContext('2d');
+  monthlyChartInstance = new Chart(mCtx, {
+    type: 'bar',
+    data: {
+      labels: monthly.map(m => m.month),
+      datasets: [
+        { label: 'Mapeamentos', data: monthly.map(m => m.mappings), backgroundColor: '#4fc3f7' },
+        { label: 'DPIAs', data: monthly.map(m => m.dpias), backgroundColor: '#ffa500' },
+        { label: 'DSRs', data: monthly.map(m => m.dsrs), backgroundColor: '#00c853' },
+      ]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { labels: { color: '#888', font: { size: 11 } } } },
+      scales: {
+        x: { stacked: true, ticks: { color: '#888', font: { size: 10 } }, grid: { display: false } },
+        y: { stacked: true, ticks: { color: '#888', font: { size: 10 } }, grid: { color: 'rgba(255,255,255,.05)' } }
+      }
+    }
+  });
+
+  // Registrations chart
+  const regs = data.registrations_per_month || [];
+  if (regChartInstance) regChartInstance.destroy();
+  const rCtx = document.getElementById('regChart').getContext('2d');
+  regChartInstance = new Chart(rCtx, {
+    type: 'bar',
+    data: {
+      labels: regs.map(r => r.month),
+      datasets: [{
+        label: 'Novos usuarios',
+        data: regs.map(r => r.registrations),
+        backgroundColor: '#4fc3f7',
+        borderRadius: 6,
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { ticks: { color: '#888', font: { size: 10 } }, grid: { display: false } },
+        y: { ticks: { color: '#888', font: { size: 10 }, stepSize: 1 }, grid: { color: 'rgba(255,255,255,.05)' } }
+      }
+    }
+  });
+
+  // Users table
+  const tbody = document.getElementById('usersTable');
+  tbody.innerHTML = '';
+  (data.users_detail || []).forEach(u => {
+    const planClass = { trial: 'badge-trial', free: 'badge-free', pro: 'badge-pro' }[u.plan] || 'badge-free';
+    const tr = document.createElement('tr');
+    tr.innerHTML =
+      '<td>' + escHtml(u.email) + '</td>' +
+      '<td><span class="badge ' + planClass + '">' + u.plan.toUpperCase() + '</span></td>' +
+      '<td>' + u.total_operations + '</td>';
+    tbody.appendChild(tr);
+  });
+
+  if ((data.users_detail || []).length === 0) {
+    tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;color:var(--muted)">Nenhum usuario ainda</td></tr>';
+  }
+
+  // Footer
+  document.getElementById('footer').textContent = 'Atualizado em: ' + (data.generated_at || '—') + ' | Dados 100% locais';
+}
+
+function escHtml(s) {
+  const d = document.createElement('div');
+  d.textContent = s;
+  return d.innerHTML;
+}
+
+// Load on start
+loadData();
+
+// Auto-refresh every 60s
+setInterval(loadData, 60000);
+</script>
+</body>
+</html>

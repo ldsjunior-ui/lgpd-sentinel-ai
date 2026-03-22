@@ -3,9 +3,11 @@
 # 100% open source, Apache 2.0
 
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import HTMLResponse
 import uvicorn
 
 from src.api.routes import billing, dpia, dsr, history, mapping, stats, usage_report
@@ -19,6 +21,7 @@ async def lifespan(app: FastAPI):
     print("🛡️  LGPD Sentinel AI v0.1.0 — Pronto para auditorias!")
     print("=" * 60)
     print("📖  Docs:        http://localhost:8000/docs")
+    print("📱  Dashboard:   http://localhost:8000/dashboard")
     print("📊  Stats:       http://localhost:8000/api/v1/stats")
     print("💬  Comunidade:  https://github.com/ldsjunior-ui/lgpd-sentinel-ai/discussions")
     print("⭐  GitHub:      https://github.com/ldsjunior-ui/lgpd-sentinel-ai")
@@ -89,6 +92,15 @@ async def root():
         "health": "/health",
         "version": "0.1.0"
     }
+
+
+_DASHBOARD_HTML = Path(__file__).parent.parent / "frontend" / "dashboard.html"
+
+
+@app.get("/dashboard", response_class=HTMLResponse, tags=["Sistema"])
+async def dashboard():
+    """Dashboard mobile-friendly de uso e adoção."""
+    return HTMLResponse(content=_DASHBOARD_HTML.read_text(encoding="utf-8"))
 
 
 app.include_router(mapping.router, prefix="/api/v1", tags=["Data Mapping"])
