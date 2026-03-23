@@ -14,6 +14,7 @@ from io import StringIO
 from langchain_community.llms import Ollama
 
 from src.core.config import Settings, get_settings
+from src.core.database import save_mapping_audit
 from src.core.prompts import DATA_MAPPING_TEMPLATE
 from src.core.quota import QuotaCheck
 from src.models.schemas import (
@@ -154,13 +155,26 @@ async def map_data(
     )
     total_sensitive = sum(1 for i in mapped_items if i.sensitive)
 
-    return DataMappingResponse(
+    response = DataMappingResponse(
         mapped_data=mapped_items,
         compliance_score=compliance_score,
         recommendations=recommendations,
         total_personal_data=total_personal,
         total_sensitive_data=total_sensitive,
     )
+
+    # Save to history
+    try:
+        save_mapping_audit(
+            company=request.company_name or "Não informada",
+            context=context,
+            items=[{"key": i.key, "value": i.value} for i in request.data],
+            result=response.model_dump(),
+        )
+    except Exception as e:
+        logger.warning("Failed to save mapping audit: %s", e)
+
+    return response
 
 
 @router.post(

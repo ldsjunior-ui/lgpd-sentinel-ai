@@ -345,16 +345,34 @@ export async function analyzeDSR(data: DSRRequest): Promise<DSRResponse> {
 }
 
 export async function getHistory(
-  tipo?: string,
-  empresa?: string,
+  _tipo?: string,
+  _empresa?: string,
   limit?: number
 ): Promise<HistoryResponse> {
-  const params = new URLSearchParams();
-  if (tipo) params.set("tipo", tipo);
-  if (empresa) params.set("empresa", empresa);
-  if (limit) params.set("limit", limit.toString());
-  const query = params.toString();
-  return request<HistoryResponse>(`/history${query ? `?${query}` : ""}`);
+  const limitParam = limit ? `?limit=${limit}` : "";
+  const [mappings, dpias] = await Promise.all([
+    request<Array<Record<string, unknown>>>(`/history/mapping${limitParam}`).catch(() => []),
+    request<Array<Record<string, unknown>>>(`/history/dpia${limitParam}`).catch(() => []),
+  ]);
+  const items: HistoryEntry[] = [
+    ...mappings.map((m) => ({
+      id: String(m.id),
+      tipo: "mapeamento",
+      empresa: (m.company as string) || "N/A",
+      timestamp: (m.created_at as string) || new Date().toISOString(),
+      resumo: (m.context as string) || undefined,
+    })),
+    ...dpias.map((d) => ({
+      id: String(d.id),
+      tipo: "dpia",
+      empresa: (d.company as string) || "N/A",
+      timestamp: (d.created_at as string) || new Date().toISOString(),
+      nivel_risco: (d.risk_level as string) || undefined,
+      score_conformidade: (d.compliance_score as number) || undefined,
+      resumo: (d.treatment as string) || undefined,
+    })),
+  ].sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+  return { total: items.length, items };
 }
 
 export async function getStatus(): Promise<StatusResponse> {

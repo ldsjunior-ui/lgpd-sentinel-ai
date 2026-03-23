@@ -19,6 +19,7 @@ from langchain_community.llms import Ollama
 from src.core.pdf_report import generate_dpia_pdf
 
 from src.core.config import Settings, get_settings
+from src.core.database import save_dpia_audit
 from src.core.prompts import DPIA_TEMPLATE, RISK_ASSESSMENT_TEMPLATE
 from src.core.quota import QuotaCheck
 from src.models.schemas import (
@@ -167,7 +168,7 @@ async def generate_dpia(
     # Extract compliance info
     conformidade = ripd_data.get("conformidade", {})
 
-    return DPIAResponse(
+    response = DPIAResponse(
         company_name=request.company_name or "Nao informada",
         treatment_description=request.treatment_description,
         legal_basis=ripd_data.get("descricao_tratamento", {}).get("base_legal", "Nao identificada"),
@@ -184,6 +185,20 @@ async def generate_dpia(
         model_used=settings.OLLAMA_MODEL,
         raw_llm_output=str(llm_output) if settings.DEBUG else None,
     )
+
+    # Save to history
+    try:
+        save_dpia_audit(
+            company=request.company_name or "Não informada",
+            treatment=request.treatment_description,
+            risk_level=risk_level.value,
+            compliance_score=conformidade.get("score_conformidade", 0),
+            result=response.model_dump(mode="json"),
+        )
+    except Exception as e:
+        logger.warning("Failed to save DPIA audit: %s", e)
+
+    return response
 
 
 @router.post(
