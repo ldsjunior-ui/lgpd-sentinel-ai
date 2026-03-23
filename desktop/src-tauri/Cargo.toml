@@ -21,3 +21,4 @@ tokio = { version = "1", features = ["full"] }
 reqwest = { version = "0.12", features = ["json"] }
 portpicker = "0.1"
 which = "7"
+dirs = "5"

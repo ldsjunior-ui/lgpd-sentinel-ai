@@ -40,6 +40,9 @@
     "copyright": "© 2026 LGPD Sentinel AI Contributors",
     "macOS": {
       "minimumSystemVersion": "10.15"
-    }
+    },
+    "resources": [
+      "resources/backend/**/*"
+    ]
   }
 }
