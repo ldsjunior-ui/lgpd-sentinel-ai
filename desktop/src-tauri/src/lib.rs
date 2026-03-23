@@ -62,7 +62,15 @@ async fn get_status(state: State<'_, AppState>) -> Result<StatusResponse, String
 
 #[tauri::command]
 fn check_ollama_installed() -> bool {
+    // Check PATH first, then common install locations
     which::which("ollama").is_ok()
+        || std::path::Path::new("/usr/local/bin/ollama").exists()
+        || std::path::Path::new("/opt/homebrew/bin/ollama").exists()
+        || std::path::Path::new(&format!(
+            "{}/bin/ollama",
+            std::env::var("HOME").unwrap_or_default()
+        ))
+        .exists()
 }
 
 #[tauri::command]
@@ -76,8 +84,17 @@ async fn start_ollama(state: State<'_, AppState>) -> Result<bool, String> {
         return Ok(true);
     }
 
+    // Find ollama binary
+    let ollama_bin = if std::path::Path::new("/usr/local/bin/ollama").exists() {
+        "/usr/local/bin/ollama"
+    } else if std::path::Path::new("/opt/homebrew/bin/ollama").exists() {
+        "/opt/homebrew/bin/ollama"
+    } else {
+        "ollama"
+    };
+
     // Start ollama serve
-    let child = Command::new("ollama")
+    let child = Command::new(ollama_bin)
         .arg("serve")
         .spawn()
         .map_err(|e| format!("Failed to start Ollama: {}", e))?;
