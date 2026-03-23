@@ -116,69 +116,12 @@ Seja tecnicamente preciso e cite a LGPD, GDPR (quando analogia util) e normas da
 
 DPIA_TEMPLATE = PromptTemplate(
     input_variables=["treatment_description", "data_types", "purposes", "company_info"],
-    template="""
-{system_prompt}
+    template="""Gere RIPD (LGPD Art.38). Empresa: {company_info}. Tratamento: {treatment_description}. Dados: {data_types}. Finalidade: {purposes}.
 
-INFORMACOES DA EMPRESA:
-{company_info}
+JSON (so JSON, sem explicacao):
+{{"ripd":{{"descricao_tratamento":{{"base_legal":"base conforme LGPD","artigos_aplicaveis":["Art.X"]}},"avaliacao_riscos":[{{"risco":"descricao","nivel_risco":"baixo|medio|alto|critico"}}],"medidas_mitigacao":[{{"medida":"descricao","tipo":"tecnica|organizacional"}}],"conformidade":{{"score_conformidade":0,"recomendacoes":["rec"],"consulta_previa_anpd":false}}}}}}
 
-DESCRICAO DO TRATAMENTO:
-{treatment_description}
-
-TIPOS DE DADOS TRATADOS:
-{data_types}
-
-FINALIDADES DO TRATAMENTO:
-{purposes}
-
-Gere um RIPD completo em JSON:
-{{
-  "ripd": {{
-    "identificacao": {{
-      "empresa": "nome da empresa",
-      "responsavel": "nome do responsavel",
-      "encarregado_dpo": "nome do DPO se houver",
-      "data_avaliacao": "data",
-      "versao": "1.0"
-    }},
-    "descricao_tratamento": {{
-      "finalidade": "descricao da finalidade",
-      "base_legal": "base legal conforme LGPD",
-      "artigos_aplicaveis": ["Art. X"],
-      "categorias_dados": ["lista de categorias"],
-      "volume_estimado": "numero aproximado de titulares"
-    }},
-    "avaliacao_riscos": [
-      {{
-        "risco": "descricao do risco",
-        "probabilidade": "baixa|media|alta",
-        "impacto": "baixo|medio|alto|severo",
-        "nivel_risco": "baixo|medio|alto|critico",
-        "titulares_afetados": "descricao"
-      }}
-    ],
-    "medidas_mitigacao": [
-      {{
-        "medida": "descricao da medida",
-        "tipo": "tecnica|organizacional|juridica",
-        "prazo": "prazo para implementacao",
-        "responsavel": "area responsavel"
-      }}
-    ],
-    "conformidade": {{
-      "score_conformidade": 0,
-      "status": "conforme|nao_conforme|em_adequacao",
-      "lacunas_identificadas": ["lacuna1"],
-      "recomendacoes": ["recomendacao1"],
-      "consulta_previa_anpd": false,
-      "justificativa_consulta": "justificativa se necessario"
-    }}
-  }}
-}}
-
-RIPD JSON:
-""".strip(),
-    partial_variables={"system_prompt": DPIA_SYSTEM},
+JSON:""",
 )
 
 # ---------------------------------------------------------------------------
@@ -242,40 +185,12 @@ Cite sempre os artigos aplicaveis da LGPD. Responda em JSON valido."""
 
 DSR_TEMPLATE = PromptTemplate(
     input_variables=["request_type", "request_description", "company_name", "data_context"],
-    template="""
-{system_prompt}
+    template="""Analise solicitacao de direito do titular (LGPD Art.18). Prazo legal: 15 dias (Art.18 §5). Empresa: {company_name}. Tipo: {request_type}. Solicitacao: {request_description}. Contexto: {data_context}.
 
-EMPRESA/CONTROLADOR: {company_name}
-TIPO DE SOLICITACAO: {request_type}
-DESCRICAO DA SOLICITACAO: {request_description}
-CONTEXTO DOS DADOS: {data_context}
+JSON (so JSON, sem explicacao):
+{{"dsr":{{"direito_identificado":"tipo","artigo_lgpd":"Art.18,X","pode_atender":true,"justificativa":"motivo","prazo_resposta_dias":15,"acoes_requeridas":[{{"acao":"descricao","responsavel":"area","prazo":"imediato|3_dias|15_dias"}}],"resposta_ao_titular":"texto resposta formal clara","requer_dpo":false,"requer_anpd":false,"documentacao_necessaria":["doc1"]}}}}
 
-Analise e retorne em JSON:
-{{
-  "dsr": {{
-    "direito_identificado": "acesso|correcao|exclusao|portabilidade|oposicao|revogacao_consentimento|restricao",
-    "artigo_lgpd": "Art. 18, inciso X",
-    "pode_atender": true,
-    "justificativa": "motivo para atender ou negar",
-    "prazo_resposta_dias": 15,
-    "acoes_requeridas": [
-      {{
-        "acao": "descricao da acao",
-        "responsavel": "area/pessoa responsavel",
-        "prazo": "imediato|3_dias|15_dias"
-      }}
-    ],
-    "resposta_ao_titular": "texto da resposta formal ao titular em linguagem clara",
-    "requer_dpo": false,
-    "requer_anpd": false,
-    "justificativa_anpd": null,
-    "documentacao_necessaria": ["documento1", "documento2"]
-  }}
-}}
-
-JSON:
-""".strip(),
-    partial_variables={"system_prompt": DSR_SYSTEM},
+JSON:""",
 )
 
 # ---------------------------------------------------------------------------

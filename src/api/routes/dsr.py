@@ -116,7 +116,9 @@ async def analyze_dsr(
         llm = Ollama(
             base_url=settings.OLLAMA_BASE_URL,
             model=settings.OLLAMA_MODEL,
-            temperature=settings.LLM_TEMPERATURE,
+            temperature=0.0,
+            num_predict=768,
+            num_ctx=2048,
         )
         prompt = DSR_TEMPLATE.format(
             request_type=request.request_type.value,

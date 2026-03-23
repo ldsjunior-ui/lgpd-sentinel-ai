@@ -129,7 +129,9 @@ async def generate_dpia(
         llm = Ollama(
             base_url=settings.OLLAMA_BASE_URL,
             model=settings.OLLAMA_MODEL,
-            temperature=settings.LLM_TEMPERATURE,
+            temperature=0.0,
+            num_predict=1024,
+            num_ctx=2048,
         )
 
         # Format prompt with request data
@@ -232,7 +234,9 @@ async def quick_risk_assessment(
         llm = Ollama(
             base_url=settings.OLLAMA_BASE_URL,
             model=settings.OLLAMA_MODEL,
-            temperature=settings.LLM_TEMPERATURE,
+            temperature=0.0,
+            num_predict=512,
+            num_ctx=2048,
         )
         prompt = RISK_ASSESSMENT_TEMPLATE.format(
             data_summary=data_summary,
