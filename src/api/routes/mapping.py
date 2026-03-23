@@ -143,6 +143,7 @@ async def map_data(
                 legal_basis=classificacao.get(
                     "legal_basis", classificacao.get("base_legal")
                 ),
+                artigo_lgpd=classificacao.get("artigo_lgpd"),
             )
         )
 
@@ -216,8 +217,13 @@ def _classify_by_regex(data: list[DataItem]) -> list[dict]:
     }
 
     sensitive_keys = [
-        "saude", "health", "biometrico", "biometric", "racial",
-        "religiao", "religion", "politico", "political", "sexual",
+        "saude", "health", "biometrico", "biometric", "biometria",
+        "racial", "etnia", "etnico", "ethnic",
+        "religiao", "religion", "religioso", "religious",
+        "politico", "political", "partido", "sindicato", "sindical",
+        "sexual", "sexualidade", "vida_sexual",
+        "genetico", "genetic", "dna", "genoma", "genomico",
+        "diagnostico", "exame", "cid", "prontuario",
     ]
 
     result = []
@@ -230,7 +236,7 @@ def _classify_by_regex(data: list[DataItem]) -> list[dict]:
         if is_sensitive:
             category = "dado_sensivel"
         elif is_personal:
-            category = "dado_pessoal"
+            category = "dado_comum"
         else:
             category = "nao_classificado"
 

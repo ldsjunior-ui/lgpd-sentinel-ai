@@ -52,6 +52,9 @@ class DataItem(BaseModel):
     legal_basis: Optional[str] = Field(
         default=None, description="Base legal conforme LGPD Art. 7 ou 11"
     )
+    artigo_lgpd: Optional[str] = Field(
+        default=None, description="Artigo da LGPD aplicavel (ex: Art. 7, V ou Art. 11, I)"
+    )
 
 
 class DataMappingRequest(BaseModel):
