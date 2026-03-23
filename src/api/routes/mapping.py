@@ -71,7 +71,9 @@ async def map_data(
         llm = Ollama(
             base_url=settings.OLLAMA_BASE_URL,
             model=settings.OLLAMA_MODEL,
-            temperature=settings.LLM_TEMPERATURE,
+            temperature=0.0,
+            num_predict=512,
+            num_ctx=2048,
         )
         prompt = DATA_MAPPING_TEMPLATE.format(
             data_items=data_items_str,

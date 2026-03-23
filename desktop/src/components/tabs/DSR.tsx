@@ -51,8 +51,11 @@ export default function DSR() {
     try {
       const response = await analyzeDSR(form);
       setResult(response);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Erro ao analisar DSR.");
+    } catch (err: any) {
+      const msg = err instanceof Error ? err.message
+        : typeof err === 'object' ? JSON.stringify(err)
+        : String(err);
+      setError(msg || "Erro ao analisar DSR.");
     } finally {
       setLoading(false);
     }
@@ -259,7 +262,7 @@ export default function DSR() {
                     <span className="text-[#00cc50] font-mono text-xs mt-0.5 shrink-0">
                       {(i + 1).toString().padStart(2, "0")}
                     </span>
-                    {acao}
+                    {typeof acao === 'string' ? acao : (acao as any)?.acao || (acao as any)?.descricao || JSON.stringify(acao)}
                   </li>
                 ))}
               </ol>

@@ -52,7 +52,7 @@ class Settings(BaseSettings):
     # Ollama / LLM settings (local inference, zero-cost)
     OLLAMA_BASE_URL: str = Field(default="http://localhost:11434")
     OLLAMA_MODEL: str = Field(default="mistral")
-    LLM_TEMPERATURE: float = Field(default=0.1, ge=0.0, le=2.0)
+    LLM_TEMPERATURE: float = Field(default=0.0, ge=0.0, le=2.0)
     LLM_MAX_TOKENS: int = Field(default=4096)
 
     # Supabase settings (free tier, optional)

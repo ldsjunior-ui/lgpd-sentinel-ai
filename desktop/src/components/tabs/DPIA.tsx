@@ -45,8 +45,11 @@ export default function DPIA() {
     try {
       const response = await generateDPIA(form);
       setResult(response);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Erro ao gerar DPIA.");
+    } catch (err: any) {
+      const msg = err instanceof Error ? err.message
+        : typeof err === 'object' ? JSON.stringify(err)
+        : String(err);
+      setError(msg || "Erro ao gerar DPIA.");
     } finally {
       setLoading(false);
     }
@@ -263,7 +266,7 @@ export default function DPIA() {
                       size={14}
                       className="text-red-400 mt-0.5 shrink-0"
                     />
-                    {risk}
+                    {typeof risk === 'string' ? risk : (risk as any)?.risco || (risk as any)?.descricao || JSON.stringify(risk)}
                   </li>
                 ))}
               </ul>
@@ -284,7 +287,7 @@ export default function DPIA() {
                     className="text-sm text-gray-300 flex items-start gap-2"
                   >
                     <span className="text-[#00cc50] mt-0.5">✓</span>
-                    {m}
+                    {typeof m === 'string' ? m : (m as any)?.medida || (m as any)?.descricao || JSON.stringify(m)}
                   </li>
                 ))}
               </ul>
@@ -304,7 +307,7 @@ export default function DPIA() {
                     className="text-sm text-gray-300 flex items-start gap-2"
                   >
                     <span className="text-[#00cc50]">→</span>
-                    {rec}
+                    {typeof rec === 'string' ? rec : (rec as any)?.recomendacao || (rec as any)?.descricao || JSON.stringify(rec)}
                   </li>
                 ))}
               </ul>

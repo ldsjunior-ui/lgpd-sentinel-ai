@@ -83,41 +83,15 @@ Seja preciso e cite artigos especificos da LGPD quando relevante."""
 
 DATA_MAPPING_TEMPLATE = PromptTemplate(
     input_variables=["data_items", "company_context"],
-    template="""
-{system_prompt}
+    template="""Classifique cada dado conforme LGPD. Dados sensiveis (Art.5,II): saude, biometria, genetica, religiao, politica, etnia, vida sexual, sindicato. Dados comuns (Art.5,I): CPF, nome, email, telefone, endereco, financeiro. Bases legais dados sensiveis SOMENTE Art.11: consentimento_explicito, obrigacao_legal, tutela_saude, prevencao_fraude. Dados comuns Art.7: consentimento, execucao_contrato, obrigacao_legal, interesse_legitimo.
 
-CONTEXTO DA EMPRESA:
-{company_context}
+Contexto: {company_context}
+Dados: {data_items}
 
-DADOS PESSOAIS PARA ANALISE:
-{data_items}
+JSON (sem explicacao, so o JSON):
+{{"mapeamento":[{{"campo":"x","categoria_lgpd":"dado_comum|dado_sensivel","is_sensitive":true|false,"base_legal":"base","artigo_lgpd":"Art.X","nivel_risco":"baixo|medio|alto|critico"}}],"resumo":{{"score_conformidade":0,"recomendacoes_principais":["r1"]}}}}
 
-Analise cada dado e retorne um JSON com o seguinte formato:
-{{
-  "mapeamento": [
-    {{
-      "campo": "nome_do_campo",
-      "categoria_lgpd": "dado_comum|dado_sensivel|dado_crianca_adolescente|dado_anonimo",
-      "base_legal": "consentimento|execucao_contrato|obrigacao_legal|interesse_legitimo|...",
-      "artigo_lgpd": "Art. 7, inciso I|Art. 11, inciso II|...",
-      "nivel_risco": "baixo|medio|alto|critico",
-      "requer_consentimento_explicito": true|false,
-      "periodo_retencao": "prazo recomendado",
-      "medidas_seguranca": ["medida1", "medida2"],
-      "observacoes": "observacoes adicionais sobre este dado"
-    }}
-  ],
-  "resumo": {{
-    "total_campos": 0,
-    "campos_sensiveis": 0,
-    "risco_geral": "baixo|medio|alto|critico",
-    "recomendacoes_principais": ["rec1", "rec2"]
-  }}
-}}
-
-JSON:
-""".strip(),
-    partial_variables={"system_prompt": DATA_MAPPING_SYSTEM},
+JSON:""",
 )
 
 # ---------------------------------------------------------------------------
