@@ -27,14 +27,14 @@ Substitua dias de trabalho manual por minutos. O LGPD Sentinel AI gera **Data Ma
 
 > **Baixe, instale e use. Sem terminal, sem Docker, sem complicação.**
 
-[![Download macOS](https://img.shields.io/badge/Download-macOS%20(Apple%20Silicon)-000?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/ldsjunior-ui/lgpd-sentinel-ai/releases/download/v1.0.0/LGPD.Sentinel.AI_1.0.0_aarch64.dmg)
-[![Download Installer](https://img.shields.io/badge/Download-Instalador%20.pkg-0078D4?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/ldsjunior-ui/lgpd-sentinel-ai/releases/download/v1.0.0/LGPD-Sentinel-AI-Installer.pkg)
+[![Download macOS](https://img.shields.io/badge/Download-macOS%20(Apple%20Silicon)-000?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/ldsjunior-ui/lgpd-sentinel-ai/releases/download/v1.0.1/LGPD.Sentinel.AI_1.0.0_aarch64.dmg)
+[![Download Windows](https://img.shields.io/badge/Download-Windows%20x64-0078D4?style=for-the-badge&logo=windows&logoColor=white)](https://github.com/ldsjunior-ui/lgpd-sentinel-ai/releases/download/v1.0.1/LGPD.Sentinel.AI_1.0.0_x64-setup.exe)
+[![Download Linux](https://img.shields.io/badge/Download-Linux%20AppImage-FCC624?style=for-the-badge&logo=linux&logoColor=black)](https://github.com/ldsjunior-ui/lgpd-sentinel-ai/releases/download/v1.0.1/LGPD.Sentinel.AI_1.0.0_amd64.AppImage)
 
 **Como instalar:**
-1. Baixe o `.dmg` acima
-2. Arraste o app para a pasta **Aplicativos**
-3. Na primeira vez: clique com botão direito > **Abrir** (necessário por não ser assinado com Apple Developer ID)
-4. O app inicia a API e o Ollama automaticamente
+- **macOS:** Baixe o `.dmg` > arraste para Aplicativos > Ajustes > Privacidade > "Abrir Mesmo Assim"
+- **Windows:** Baixe o `.exe` > execute o instalador > abra pelo Menu Iniciar
+- **Linux:** Baixe o `.AppImage` > `chmod +x` > execute
 
 **Requisitos:** macOS 10.15+ (Apple Silicon) · [Ollama](https://ollama.com) instalado · Python 3.11+
 
