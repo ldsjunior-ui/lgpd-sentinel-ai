@@ -2,6 +2,7 @@ import { useState } from "react";
 import MatrixRain from "./components/MatrixRain";
 import Sidebar from "./components/Sidebar";
 import SetupWizard from "./components/SetupWizard";
+import Onboarding from "./components/Onboarding";
 import DataMapping from "./components/tabs/DataMapping";
 import DPIA from "./components/tabs/DPIA";
 import DSR from "./components/tabs/DSR";
@@ -13,10 +14,17 @@ function App() {
   const [setupComplete, setSetupComplete] = useState(
     () => localStorage.getItem("lgpd_setup_complete") === "true"
   );
+  const [onboardingComplete, setOnboardingComplete] = useState(
+    () => localStorage.getItem("lgpd_onboarding_complete") === "true"
+  );
   const [currentTab, setCurrentTab] = useState("mapping");
 
   if (!setupComplete) {
     return <SetupWizard onComplete={() => setSetupComplete(true)} />;
+  }
+
+  if (!onboardingComplete) {
+    return <Onboarding onComplete={() => setOnboardingComplete(true)} />;
   }
 
   function renderTab() {
