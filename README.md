@@ -23,10 +23,27 @@ Substitua dias de trabalho manual por minutos. O LGPD Sentinel AI gera **Data Ma
 
 ---
 
+## 🖥️ Download — App Desktop (Novo!)
+
+> **Baixe, instale e use. Sem terminal, sem Docker, sem complicação.**
+
+[![Download macOS](https://img.shields.io/badge/Download-macOS%20(Apple%20Silicon)-000?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/ldsjunior-ui/lgpd-sentinel-ai/releases/download/v1.0.0/LGPD.Sentinel.AI_1.0.0_aarch64.dmg)
+[![Download Installer](https://img.shields.io/badge/Download-Instalador%20.pkg-0078D4?style=for-the-badge&logo=apple&logoColor=white)](https://github.com/ldsjunior-ui/lgpd-sentinel-ai/releases/download/v1.0.0/LGPD-Sentinel-AI-Installer.pkg)
+
+**Como instalar:**
+1. Baixe o `.dmg` acima
+2. Arraste o app para a pasta **Aplicativos**
+3. Na primeira vez: clique com botão direito > **Abrir** (necessário por não ser assinado com Apple Developer ID)
+4. O app inicia a API e o Ollama automaticamente
+
+**Requisitos:** macOS 10.15+ (Apple Silicon) · [Ollama](https://ollama.com) instalado · Python 3.11+
+
+---
+
 ## ⚡ O que ele faz em 60 segundos
 
 ```bash
-docker compose up        # sobe API + IA
+docker compose up        # sobe API + IA (alternativa ao app desktop)
 # acesse http://localhost:8501
 ```
 
