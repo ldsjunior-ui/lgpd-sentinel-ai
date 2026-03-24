@@ -8,6 +8,10 @@ from httpx import AsyncClient, ASGITransport
 from unittest.mock import patch
 
 from src.main import app
+from src.core.database import init_db
+
+# Initialize database tables before any tests run
+init_db()
 
 
 @pytest.fixture(autouse=True)
