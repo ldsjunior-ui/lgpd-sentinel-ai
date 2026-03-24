@@ -10,6 +10,9 @@ import {
   ChevronUp,
   Loader2,
   AlertTriangle,
+  Trash2,
+  FolderOpen,
+  HardDrive,
 } from "lucide-react";
 import {
   LineChart,
@@ -32,6 +35,8 @@ export default function History() {
   const [expandedId, setExpandedId] = useState<string | null>(null);
   const [filterCompany, setFilterCompany] = useState("");
   const [filterRisk, setFilterRisk] = useState("");
+  const [showClearConfirm, setShowClearConfirm] = useState(false);
+  const [clearing, setClearing] = useState(false);
 
   useEffect(() => {
     loadHistory();
@@ -124,15 +129,83 @@ export default function History() {
   return (
     <div className="space-y-6 fade-in">
       {/* Header */}
-      <div>
-        <h2 className="text-xl font-bold text-white flex items-center gap-2">
-          <HistoryIcon size={24} className="text-[#00cc50]" />
-          Histórico de Análises
-        </h2>
-        <p className="text-sm text-gray-400 mt-1">
-          Acompanhe o histórico de mapeamentos, DPIAs e a evolução da
-          conformidade.
-        </p>
+      <div className="flex items-start justify-between">
+        <div>
+          <h2 className="text-xl font-bold text-white flex items-center gap-2">
+            <HistoryIcon size={24} className="text-[#00cc50]" />
+            Histórico de Análises
+          </h2>
+          <p className="text-sm text-gray-400 mt-1">
+            Acompanhe o histórico de mapeamentos, DPIAs e a evolução da
+            conformidade.
+          </p>
+        </div>
+        <button
+          onClick={() => setShowClearConfirm(true)}
+          className="text-xs text-gray-500 hover:text-red-400 flex items-center gap-1 transition-colors px-3 py-1.5 rounded-lg hover:bg-red-500/10"
+          title="Limpar todos os dados locais"
+        >
+          <Trash2 size={14} />
+          Limpar Dados
+        </button>
+      </div>
+
+      {/* Clear Data Confirmation */}
+      {showClearConfirm && (
+        <div className="p-4 rounded-lg bg-red-500/10 border border-red-500/30">
+          <h3 className="text-sm font-semibold text-red-400 flex items-center gap-2 mb-2">
+            <AlertTriangle size={16} />
+            Confirmar Exclusão de Dados
+          </h3>
+          <p className="text-xs text-gray-300 mb-2">
+            Isso apagará <strong>permanentemente</strong> todo o histórico de mapeamentos, DPIAs,
+            DSRs e o banco de dados local. Esta ação não pode ser desfeita.
+          </p>
+          <div className="flex items-center gap-2 text-xs text-gray-500 mb-3">
+            <HardDrive size={12} />
+            <span>Dados armazenados em: <code className="text-[#00cc50]">~/Library/Application Support/LGPD Sentinel AI/</code></span>
+          </div>
+          <div className="flex gap-2">
+            <button
+              onClick={async () => {
+                setClearing(true);
+                try {
+                  const { getBaseUrl, getApiKey } = await import("../../lib/api");
+                  const url = await getBaseUrl();
+                  const key = getApiKey();
+                  await fetch(`${url.replace("/api/v1", "")}/api/v1/history/clear`, {
+                    method: "DELETE",
+                    headers: key ? { "X-API-Key": key } : {},
+                  });
+                  setEntries([]);
+                  setShowClearConfirm(false);
+                } catch {
+                  // If API endpoint doesn't exist, inform user
+                  alert("Para limpar os dados manualmente, exclua o arquivo:\n~/Library/Application Support/LGPD Sentinel AI/sentinel.db");
+                  setShowClearConfirm(false);
+                } finally {
+                  setClearing(false);
+                }
+              }}
+              disabled={clearing}
+              className="px-4 py-2 text-xs bg-red-500/20 text-red-400 rounded-lg hover:bg-red-500/30 border border-red-500/30 transition-colors"
+            >
+              {clearing ? "Apagando..." : "Sim, Apagar Tudo"}
+            </button>
+            <button
+              onClick={() => setShowClearConfirm(false)}
+              className="px-4 py-2 text-xs text-gray-400 rounded-lg hover:bg-[#0f3460]/20 transition-colors"
+            >
+              Cancelar
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Data Storage Info */}
+      <div className="flex items-center gap-2 text-xs text-gray-600 px-1">
+        <FolderOpen size={12} />
+        <span>Dados armazenados localmente em <code className="text-gray-500">~/Library/Application Support/LGPD Sentinel AI/sentinel.db</code></span>
       </div>
 
       {error && (

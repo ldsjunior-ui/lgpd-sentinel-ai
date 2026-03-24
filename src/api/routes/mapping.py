@@ -93,10 +93,15 @@ async def map_data(
 
     if not classificacoes:
         # Fallback: regex classification when LLM output is unparseable
+        logger.warning(
+            "LLM output could not be parsed as structured JSON. Using regex fallback. "
+            "Raw output (first 500 chars): %s",
+            str(result)[:500],
+        )
         classificacoes = _classify_by_regex(request.data)
         compliance_score = 60.0
         recommendations = [
-            "Execute o audit completo com Ollama para analise mais precisa",
+            "Classificação realizada por regras locais (fallback). Para análise mais precisa, verifique a conexão com o Ollama.",
             "Verifique se todos os dados tem base legal documentada",
         ]
     else:
