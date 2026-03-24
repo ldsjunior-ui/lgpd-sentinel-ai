@@ -41,13 +41,14 @@ class Settings(BaseSettings):
 
     # App metadata
     APP_NAME: str = "LGPD Sentinel AI"
-    APP_VERSION: str = "0.1.0"
+    APP_VERSION: str = "1.0.0"
     DEBUG: bool = Field(default=False)
     LOG_LEVEL: str = Field(default="INFO")
 
     # API settings
     API_V1_PREFIX: str = "/api/v1"
-    CORS_ORIGINS: list[str] = Field(default=["*"])
+    # Production: only localhost. Use CORS_ORIGINS env var to override in dev.
+    CORS_ORIGINS: list[str] = Field(default=["http://localhost:*", "https://localhost:*", "tauri://localhost"])
 
     # Ollama / LLM settings (local inference, zero-cost)
     OLLAMA_BASE_URL: str = Field(default="http://localhost:11434")
@@ -72,25 +73,32 @@ class Settings(BaseSettings):
     RISK_HIGH_THRESHOLD: float = Field(default=0.7, ge=0.0, le=1.0)
     RISK_MEDIUM_THRESHOLD: float = Field(default=0.4, ge=0.0, le=1.0)
 
-    # Stripe (freemium monetization)
+    # ── FUTURE / OPTIONAL FEATURES ──────────────────────────────────────────
+    # The settings below are NOT used in the default local-only mode.
+    # They exist as preparation for future SaaS/cloud scenarios.
+    # In local mode, NO external connections are made — all processing
+    # happens on your machine via Ollama. No telemetry, no tracking.
+
+    # Stripe (future: freemium monetization — NOT active in local mode)
     STRIPE_SECRET_KEY: Optional[str] = Field(default=None)
     STRIPE_WEBHOOK_SECRET: Optional[str] = Field(default=None)
     STRIPE_PRICE_ID_PRO: Optional[str] = Field(default=None)
     STRIPE_SUCCESS_URL: str = Field(default="http://localhost:8501?checkout=success")
     STRIPE_CANCEL_URL: str = Field(default="http://localhost:8501?checkout=cancel")
 
-    # Free tier quotas (per month)
+    # Local quota limits (enforced locally, no external calls)
     FREE_QUOTA_MAPPINGS: int = Field(default=5)
     FREE_QUOTA_DPIAS: int = Field(default=2)
     FREE_QUOTA_DSRS: int = Field(default=10)
 
-    # Email notifications (SMTP — funciona com Gmail, Outlook, Brevo, etc.)
-    SMTP_HOST: str = Field(default="smtp-mail.outlook.com")
+    # Email notifications (future: optional SMTP — NOT active by default)
+    # Only used if user explicitly configures SMTP credentials.
+    SMTP_HOST: str = Field(default="")
     SMTP_PORT: int = Field(default=587)
-    SMTP_USER: Optional[str] = Field(default=None)      # seu email de envio
-    SMTP_PASSWORD: Optional[str] = Field(default=None)  # senha ou app password
-    SMTP_FROM: str = Field(default="")                  # deixe vazio = usa SMTP_USER
-    NOTIFICATION_EMAIL: str = Field(default="leo.jr_souza@hotmail.com")
+    SMTP_USER: Optional[str] = Field(default=None)
+    SMTP_PASSWORD: Optional[str] = Field(default=None)
+    SMTP_FROM: str = Field(default="")
+    NOTIFICATION_EMAIL: str = Field(default="")
 
 
 @lru_cache()

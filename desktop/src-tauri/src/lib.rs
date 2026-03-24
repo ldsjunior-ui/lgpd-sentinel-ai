@@ -99,7 +99,7 @@ fn start_api_backend(port: u16, resource_dir: &std::path::Path) -> Option<Child>
         .args([
             "-m", "uvicorn",
             "src.main:app",
-            "--host", "0.0.0.0",
+            "--host", "127.0.0.1",
             "--port", &port.to_string(),
         ])
         .env("PYTHONPATH", backend_dir.parent().unwrap_or(&backend_dir))

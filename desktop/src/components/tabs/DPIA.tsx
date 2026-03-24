@@ -314,6 +314,15 @@ export default function DPIA() {
             </div>
           )}
 
+          {/* Disclaimer */}
+          <div className="p-3 rounded-lg bg-yellow-500/5 border border-yellow-500/20">
+            <p className="text-[0.65rem] text-gray-500 leading-relaxed">
+              ⚠️ <strong className="text-gray-400">Aviso:</strong> Este RIPD é gerado por IA local e tem caráter indicativo.
+              Deve ser revisado e validado por DPO ou profissional jurídico qualificado antes de uso oficial.
+              Não substitui avaliação humana especializada.
+            </p>
+          </div>
+
           {/* PDF Download */}
           <button
             onClick={handleDownloadPdf}

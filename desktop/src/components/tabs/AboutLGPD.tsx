@@ -285,13 +285,30 @@ export default function AboutLGPD() {
       </div>
 
       {/* Disclaimer */}
-      <div className="p-4 rounded-lg bg-[#0f3460]/20 border border-[#0f3460]/30">
+      <div className="p-4 rounded-lg bg-yellow-500/10 border border-yellow-500/30">
+        <h3 className="text-sm font-semibold text-yellow-400 flex items-center gap-2 mb-2">
+          <AlertTriangle size={16} />
+          Aviso Legal Importante
+        </h3>
+        <p className="text-xs text-gray-300 leading-relaxed mb-2">
+          O LGPD Sentinel AI é uma <strong>ferramenta de apoio à análise e organização</strong> de dados
+          pessoais. Ele <strong>NÃO substitui</strong> avaliação jurídica humana especializada, consultoria
+          profissional de DPO ou decisão de compliance.
+        </p>
+        <p className="text-xs text-gray-400 leading-relaxed mb-2">
+          Os resultados gerados por IA (classificações, scores, recomendações) são <strong>indicativos</strong> e
+          devem ser validados por profissional qualificado antes de serem utilizados em decisões de conformidade.
+          Scores e classificações não garantem precisão absoluta e podem variar conforme o contexto.
+        </p>
+        <p className="text-xs text-gray-400 leading-relaxed mb-2">
+          <strong>Privacidade:</strong> Todo o processamento é feito localmente na sua máquina via Ollama.
+          Nenhum dado pessoal é enviado para servidores externos, cloud ou APIs remotas.
+          Os dados ficam armazenados em <code className="text-[#00cc50]">~/Library/Application Support/LGPD Sentinel AI/</code> (macOS)
+          ou <code className="text-[#00cc50]">%LOCALAPPDATA%/LGPD Sentinel AI/</code> (Windows).
+        </p>
         <p className="text-xs text-gray-500 leading-relaxed">
-          <strong className="text-gray-400">Aviso Legal:</strong> As informações
-          apresentadas nesta seção têm caráter informativo e educacional. O LGPD
-          Sentinel AI é uma ferramenta de auxílio e não substitui a consultoria
-          jurídica especializada. Para questões específicas sobre conformidade
-          com a LGPD, consulte um advogado especializado em proteção de dados.
+          Para questões específicas sobre conformidade com a LGPD, consulte um advogado
+          especializado em proteção de dados pessoais.
         </p>
       </div>
     </div>

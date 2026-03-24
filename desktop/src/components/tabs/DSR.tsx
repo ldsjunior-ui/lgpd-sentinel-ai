@@ -280,6 +280,15 @@ export default function DSR() {
               </div>
             </div>
           )}
+
+          {/* Disclaimer */}
+          <div className="p-3 rounded-lg bg-yellow-500/5 border border-yellow-500/20">
+            <p className="text-[0.65rem] text-gray-500 leading-relaxed">
+              ⚠️ <strong className="text-gray-400">Aviso:</strong> Esta análise é gerada por IA local e tem caráter indicativo.
+              A resposta ao titular deve ser revisada por profissional jurídico ou DPO antes do envio.
+              Prazo legal de resposta: 15 dias (Art. 18, §5 da LGPD).
+            </p>
+          </div>
         </div>
       )}
     </div>

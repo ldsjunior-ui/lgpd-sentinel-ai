@@ -324,6 +324,15 @@ export default function DataMapping() {
               ))}
             </div>
           </div>
+
+          {/* Disclaimer */}
+          <div className="p-3 rounded-lg bg-yellow-500/5 border border-yellow-500/20">
+            <p className="text-[0.65rem] text-gray-500 leading-relaxed">
+              ⚠️ <strong className="text-gray-400">Aviso:</strong> Esta análise é gerada por IA local e tem caráter indicativo.
+              Classificações e scores devem ser validados por profissional de compliance ou DPO qualificado.
+              Não substitui análise jurídica especializada.
+            </p>
+          </div>
         </div>
       )}
     </div>
