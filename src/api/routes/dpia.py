@@ -167,6 +167,40 @@ async def generate_dpia(
 
     # Extract compliance info
     conformidade = ripd_data.get("conformidade", {})
+    mitigations = ripd_data.get("medidas_mitigacao", [])
+
+    # ── Calibrated DPIA Compliance Score ─────────────────────────────────
+    # Deterministic calculation based on actual analysis results:
+    # - Base: 100 points
+    # - Each critical risk: -20pts, high: -15pts, medium: -8pts, low: -3pts
+    # - Each mitigation measure: +5pts (capped at +25)
+    # - No risks identified: cap at 80 (indicates incomplete analysis)
+    # - Blend: 60% calibrated + 40% LLM suggestion
+
+    cal_score = 100.0
+    risk_penalties = {"critico": 20, "alto": 15, "medio": 8, "baixo": 3}
+    for r in risks:
+        nivel = r.get("nivel_risco", "baixo").lower()
+        cal_score -= risk_penalties.get(nivel, 5)
+
+    mitigation_bonus = min(len(mitigations) * 5, 25)
+    cal_score += mitigation_bonus
+
+    if not risks:
+        cal_score = min(cal_score, 80)  # Incomplete if no risks found
+
+    llm_compliance = max(0, min(100, float(conformidade.get("score_conformidade", 50))))
+    final_compliance = round(cal_score * 0.6 + llm_compliance * 0.4, 1)
+    final_compliance = max(0, min(100, final_compliance))
+
+    # Add methodology note
+    raw_recs = conformidade.get("recomendacoes", [])
+    if isinstance(raw_recs, list):
+        raw_recs.append(
+            f"Score de conformidade DPIA: {final_compliance}% "
+            f"(baseado em {len(risks)} riscos, {len(mitigations)} mitigações). "
+            "Este score é indicativo e deve ser validado por DPO qualificado."
+        )
 
     response = DPIAResponse(
         company_name=request.company_name or "Nao informada",
@@ -174,11 +208,11 @@ async def generate_dpia(
         legal_basis=ripd_data.get("descricao_tratamento", {}).get("base_legal", "Nao identificada"),
         applicable_articles=ripd_data.get("descricao_tratamento", {}).get("artigos_aplicaveis", []),
         risks=risks,
-        mitigation_measures=ripd_data.get("medidas_mitigacao", []),
+        mitigation_measures=mitigations,
         overall_risk_score=risk_score,
         risk_level=risk_level,
-        compliance_score=conformidade.get("score_conformidade", 0),
-        recommendations=conformidade.get("recomendacoes", []),
+        compliance_score=final_compliance,
+        recommendations=raw_recs,
         requires_anpd_consultation=conformidade.get("consulta_previa_anpd", False),
         anpd_consultation_reason=conformidade.get("justificativa_consulta"),
         generated_at=datetime.utcnow(),

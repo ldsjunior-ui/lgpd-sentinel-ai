@@ -159,10 +159,69 @@ async def map_data(
         1 for i in mapped_items if i.lgpd_category != LGPDCategory.NAO_CLASSIFICADO
     )
     total_sensitive = sum(1 for i in mapped_items if i.sensitive)
+    total_with_basis = sum(1 for i in mapped_items if i.legal_basis)
+    total_unclassified = sum(
+        1 for i in mapped_items if i.lgpd_category == LGPDCategory.NAO_CLASSIFICADO
+    )
+
+    # ── Calibrated Score Calculation ─────────────────────────────────────
+    # Score is calculated deterministically based on actual classification
+    # results, NOT solely from LLM output. This ensures consistency.
+    #
+    # Methodology:
+    # - Base: 100 points
+    # - Penalty: -10 per sensitive data item without explicit consent basis
+    # - Penalty: -15 per unclassified item (LLM couldn't determine)
+    # - Penalty: -5 per item without legal basis assigned
+    # - Bonus: +5 if all items have legal basis (full coverage)
+    # - Clamp: 0-100 range
+    #
+    # The LLM-suggested score is used as a secondary reference only.
+
+    calibrated_score = 100.0
+    n_items = len(mapped_items) or 1
+
+    # Penalize sensitive data without proper basis
+    sensitive_without_consent = sum(
+        1 for i in mapped_items
+        if i.sensitive and i.legal_basis not in (
+            "consentimento", "obrigacao_legal", "tutela_saude", "protecao_vida"
+        )
+    )
+    calibrated_score -= sensitive_without_consent * 10
+
+    # Penalize unclassified items
+    calibrated_score -= total_unclassified * 15
+
+    # Penalize items without legal basis
+    items_no_basis = n_items - total_with_basis
+    calibrated_score -= items_no_basis * 5
+
+    # Bonus for full coverage
+    if total_with_basis == n_items and total_unclassified == 0:
+        calibrated_score += 5
+
+    # Blend: 70% calibrated + 30% LLM suggestion (if reasonable)
+    llm_score = max(0, min(100, compliance_score))
+    final_score = round(calibrated_score * 0.7 + llm_score * 0.3, 1)
+    final_score = max(0, min(100, final_score))
+
+    # Add score methodology note to recommendations
+    score_note = (
+        f"Score de conformidade: {final_score}% "
+        f"(calculado com base em {n_items} itens: "
+        f"{total_sensitive} sensíveis, {total_with_basis} com base legal, "
+        f"{total_unclassified} não classificados). "
+        "Este score é indicativo e deve ser validado por profissional qualificado."
+    )
+    if isinstance(recommendations, list):
+        recommendations.append(score_note)
+    else:
+        recommendations = [score_note]
 
     response = DataMappingResponse(
         mapped_data=mapped_items,
-        compliance_score=compliance_score,
+        compliance_score=final_score,
         recommendations=recommendations,
         total_personal_data=total_personal,
         total_sensitive_data=total_sensitive,
