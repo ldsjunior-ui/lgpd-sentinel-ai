@@ -87,9 +87,11 @@ class Settings(BaseSettings):
     STRIPE_CANCEL_URL: str = Field(default="http://localhost:8501?checkout=cancel")
 
     # Local quota limits (enforced locally, no external calls)
-    FREE_QUOTA_MAPPINGS: int = Field(default=5)
-    FREE_QUOTA_DPIAS: int = Field(default=2)
-    FREE_QUOTA_DSRS: int = Field(default=10)
+    # Free plan: 8 total analyses per day (mapping + DPIA + DSR combined)
+    FREE_QUOTA_DAILY: int = Field(default=8)
+    FREE_QUOTA_MAPPINGS: int = Field(default=8)
+    FREE_QUOTA_DPIAS: int = Field(default=8)
+    FREE_QUOTA_DSRS: int = Field(default=8)
 
     # Email notifications (future: optional SMTP — NOT active by default)
     # Only used if user explicitly configures SMTP credentials.

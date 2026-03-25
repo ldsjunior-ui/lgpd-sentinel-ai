@@ -2,37 +2,55 @@
 # Licensed under the Apache License, Version 2.0
 
 """
-Quota enforcement for freemium plans.
-Usage: inject `QuotaCheck("mappings")` as a FastAPI dependency.
+Quota enforcement — free tier with daily limits.
+8 analyses per day (mapping + DPIA + DSR combined), no API key required.
 """
+
+import logging
+from datetime import date
 
 from fastapi import Depends, Header, HTTPException, status
 
 from src.core.config import get_settings, Settings
-from src.core.database import get_api_key, get_usage, increment_usage, is_trial_active
+from src.core.database import get_api_key, is_trial_active
 
-# Sentinel key used when no X-API-Key header is provided (anonymous / demo)
+logger = logging.getLogger(__name__)
+
+# In-memory daily usage counter (resets each day)
+_daily_usage: dict[str, dict[str, int]] = {}
+_usage_date: date | None = None
+
+
+def _reset_if_new_day() -> None:
+    """Reset counters at midnight."""
+    global _daily_usage, _usage_date
+    today = date.today()
+    if _usage_date != today:
+        _daily_usage = {}
+        _usage_date = today
+
+
+def get_usage(api_key: str) -> dict[str, int]:
+    """Get current daily usage for a key."""
+    _reset_if_new_day()
+    return _daily_usage.get(api_key, {"mappings": 0, "dpias": 0, "dsrs": 0, "total": 0})
+
+
+def increment_usage(api_key: str, endpoint: str) -> None:
+    """Increment daily usage counter."""
+    _reset_if_new_day()
+    if api_key not in _daily_usage:
+        _daily_usage[api_key] = {"mappings": 0, "dpias": 0, "dsrs": 0, "total": 0}
+    _daily_usage[api_key][endpoint] = _daily_usage[api_key].get(endpoint, 0) + 1
+    _daily_usage[api_key]["total"] = _daily_usage[api_key].get("total", 0) + 1
+
+
+# Sentinel key for anonymous users
 ANONYMOUS_KEY = "__anonymous__"
-
-# Per-plan monthly limits (None = unlimited)
-PLAN_LIMITS: dict[str, dict[str, int | None]] = {
-    "free": {"mappings": None, "dpias": None, "dsrs": None},  # set from settings
-    "pro":  {"mappings": None, "dpias": None, "dsrs": None},  # unlimited
-}
-
-
-def _get_limits(plan: str, settings: Settings) -> dict[str, int | None]:
-    if plan in ("pro", "trial"):
-        return {"mappings": None, "dpias": None, "dsrs": None}
-    return {
-        "mappings": settings.FREE_QUOTA_MAPPINGS,
-        "dpias": settings.FREE_QUOTA_DPIAS,
-        "dsrs": settings.FREE_QUOTA_DSRS,
-    }
 
 
 class QuotaCheck:
-    """FastAPI dependency factory. Usage: Depends(QuotaCheck('mappings'))"""
+    """FastAPI dependency. Free: 8/day total. Pro/Trial: unlimited."""
 
     def __init__(self, endpoint: str) -> None:
         self.endpoint = endpoint
@@ -42,13 +60,9 @@ class QuotaCheck:
         x_api_key: str | None = Header(default=None, alias="X-API-Key"),
         settings: Settings = Depends(get_settings),
     ) -> dict:
-        """
-        Validate API key, check quota, and return key info dict.
-        If no key is provided, treat as anonymous free-tier user.
-        """
         api_key = x_api_key or ANONYMOUS_KEY
 
-        # Look up key in DB (anonymous key is always free)
+        # Look up key (anonymous = free, always valid)
         if api_key == ANONYMOUS_KEY:
             key_info = {"api_key": ANONYMOUS_KEY, "plan": "free", "email": None}
         else:
@@ -56,29 +70,33 @@ class QuotaCheck:
             if not key_info:
                 raise HTTPException(
                     status_code=status.HTTP_401_UNAUTHORIZED,
-                    detail="Invalid or inactive API key.",
+                    detail="Chave API inválida ou inativa.",
                 )
 
         plan = key_info.get("plan", "free")
-        # Treat as Pro during active trial period
+
+        # Trial = unlimited
         if plan == "free" and api_key != ANONYMOUS_KEY and is_trial_active(api_key):
             plan = "trial"
-        limits = _get_limits(plan, settings)
-        limit = limits.get(self.endpoint)
 
-        if limit is not None:
-            usage = get_usage(api_key)
-            used = usage.get(self.endpoint, 0)
-            if used >= limit:
-                raise HTTPException(
-                    status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-                    detail=(
-                        f"Monthly quota exceeded for '{self.endpoint}' "
-                        f"({used}/{limit}). Upgrade to Pro for unlimited access."
-                    ),
-                )
+        # Pro/Trial = unlimited
+        if plan in ("pro", "trial"):
+            increment_usage(api_key, self.endpoint)
+            return key_info
 
-        # Increment usage after passing the check
+        # Free tier: 8 analyses per day (total across all endpoints)
+        daily_limit = settings.FREE_QUOTA_DAILY
+        usage = get_usage(api_key)
+        total_used = usage.get("total", 0)
+
+        if total_used >= daily_limit:
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail=(
+                    f"Limite diário atingido ({total_used}/{daily_limit} análises hoje). "
+                    f"Volte amanhã ou gere uma API Key para trial Pro ilimitado de 7 dias."
+                ),
+            )
+
         increment_usage(api_key, self.endpoint)
-
         return key_info

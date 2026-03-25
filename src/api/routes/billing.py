@@ -18,10 +18,10 @@ from src.core.notifications import notify_new_subscriber, notify_cancellation
 from src.core.database import (
     create_api_key,
     get_api_key,
-    get_usage,
     is_trial_active,
     update_api_key_plan,
 )
+from src.core.quota import get_usage, ANONYMOUS_KEY
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/billing", tags=["Billing / Planos"])
@@ -44,13 +44,11 @@ class CheckoutRequest(BaseModel):
 
 
 class PlanStatusResponse(BaseModel):
-    api_key: str
     plan: str
+    daily_limit: int
+    requests_today: int
+    requests_remaining: int
     trial_active: bool = False
-    trial_ends_at: Optional[str] = None
-    usage: dict[str, int]
-    limits: dict[str, Any]
-    stripe_configured: bool
 
 
 # ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -96,33 +94,32 @@ async def plan_status(
     x_api_key: str | None = Header(default=None, alias="X-API-Key"),
     settings: Settings = Depends(get_settings),
 ) -> PlanStatusResponse:
-    """Return current plan, usage, and quota limits for the provided API key."""
-    if not x_api_key:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Forneça sua API key no header X-API-Key.",
-        )
-    key_info = get_api_key(x_api_key)
-    if not key_info:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="API key não encontrada ou inativa.",
-        )
+    """Return current daily usage. Works without API key (free tier)."""
+    api_key = x_api_key or ANONYMOUS_KEY
 
-    plan = key_info.get("plan", "free")
-    trial_active = plan == "free" and is_trial_active(x_api_key)
-    effective_plan = "trial" if trial_active else plan
-    usage = get_usage(x_api_key)
-    limits = _get_limits(effective_plan, settings)
+    # Determine plan
+    plan = "free"
+    trial_active = False
+    if api_key != ANONYMOUS_KEY:
+        key_info = get_api_key(api_key)
+        if key_info:
+            plan = key_info.get("plan", "free")
+            if plan == "free" and is_trial_active(api_key):
+                plan = "trial"
+                trial_active = True
+
+    # Get daily usage
+    usage = get_usage(api_key)
+    total_today = usage.get("total", 0)
+    daily_limit = settings.FREE_QUOTA_DAILY if plan == "free" else 999
+    remaining = max(0, daily_limit - total_today)
 
     return PlanStatusResponse(
-        api_key=x_api_key,
-        plan=effective_plan,
+        plan="GRATUITO" if plan == "free" else "PRO" if plan == "pro" else "TRIAL",
+        daily_limit=daily_limit,
+        requests_today=total_today,
+        requests_remaining=remaining,
         trial_active=trial_active,
-        trial_ends_at=key_info.get("trial_ends_at"),
-        usage=usage,
-        limits=limits,
-        stripe_configured=bool(settings.STRIPE_SECRET_KEY),
     )
 
 

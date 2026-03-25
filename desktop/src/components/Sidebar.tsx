@@ -212,7 +212,7 @@ export default function Sidebar({ currentTab, onTabChange }: SidebarProps) {
       {planStatus && (
         <div className="px-4 pb-3">
           <div className="text-[0.65rem] text-gray-500 uppercase tracking-wider mb-1.5">
-            Plano: {planStatus.plan}
+            PLANO: {planStatus.plan}
           </div>
           <div className="progress-bar">
             <div
@@ -227,7 +227,7 @@ export default function Sidebar({ currentTab, onTabChange }: SidebarProps) {
           </div>
           <div className="flex justify-between mt-1">
             <span className="text-[0.6rem] text-gray-500">
-              {planStatus.requests_today}/{planStatus.daily_limit} requests
+              {planStatus.requests_today}/{planStatus.daily_limit} análises hoje
             </span>
             <span className="text-[0.6rem] text-[#afffcf]">
               {planStatus.requests_remaining} restantes
