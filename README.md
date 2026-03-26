@@ -38,6 +38,24 @@ Substitua dias de trabalho manual por minutos. O LGPD Sentinel AI gera **Data Ma
 
 **Requisitos:** macOS 10.15+ (Apple Silicon) · [Ollama](https://ollama.com) instalado · Python 3.11+
 
+**8 análises gratuitas por dia. Sem cadastro. Sem cartão de crédito.**
+
+---
+
+## 📸 Screenshots
+
+<div align="center">
+
+| Mapeamento de Dados | DPIA / Relatório de Impacto |
+|:---:|:---:|
+| ![Mapeamento](docs/screenshots/01_mapping.png) | ![DPIA](docs/screenshots/02_dpia.png) |
+
+| Direitos do Titular (DSR) | Sobre a LGPD |
+|:---:|:---:|
+| ![DSR](docs/screenshots/03_dsr.png) | ![Sobre](docs/screenshots/04_about.png) |
+
+</div>
+
 ---
 
 ## ⚡ O que ele faz em 60 segundos
