@@ -2,8 +2,8 @@
 # Licensed under the Apache License, Version 2.0
 
 """
-Quota enforcement — free tier with daily limits.
-8 analyses per day (mapping + DPIA + DSR combined), no API key required.
+Quota enforcement — tiered plans with monthly limits.
+Free: 3/month, Starter: 50/month, Pro: unlimited.
 """
 
 import logging
@@ -12,17 +12,17 @@ from datetime import date
 from fastapi import Depends, Header, HTTPException, status
 
 from src.core.config import get_settings, Settings
-from src.core.database import get_api_key, is_trial_active
+from src.core.database import get_api_key, is_trial_active, get_monthly_usage, increment_monthly_usage
 
 logger = logging.getLogger(__name__)
 
-# In-memory daily usage counter (resets each day)
+# In-memory daily usage counter (for backwards compat and real-time tracking)
 _daily_usage: dict[str, dict[str, int]] = {}
 _usage_date: date | None = None
 
 
 def _reset_if_new_day() -> None:
-    """Reset counters at midnight."""
+    """Reset daily counters at midnight."""
     global _daily_usage, _usage_date
     today = date.today()
     if _usage_date != today:
@@ -48,9 +48,17 @@ def increment_usage(api_key: str, endpoint: str) -> None:
 # Sentinel key for anonymous users
 ANONYMOUS_KEY = "__anonymous__"
 
+# Monthly limits per plan
+PLAN_LIMITS = {
+    "free": 3,
+    "starter": 50,
+    "pro": 999999,  # effectively unlimited
+    "trial": 999999,
+}
+
 
 class QuotaCheck:
-    """FastAPI dependency. Free: 8/day total. Pro/Trial: unlimited."""
+    """FastAPI dependency. Free: 3/month, Starter: 50/month, Pro/Trial: unlimited."""
 
     def __init__(self, endpoint: str) -> None:
         self.endpoint = endpoint
@@ -79,24 +87,33 @@ class QuotaCheck:
         if plan == "free" and api_key != ANONYMOUS_KEY and is_trial_active(api_key):
             plan = "trial"
 
-        # Pro/Trial = unlimited
+        # Pro/Trial/Starter with high limits = skip monthly check
         if plan in ("pro", "trial"):
             increment_usage(api_key, self.endpoint)
+            increment_monthly_usage(api_key, self.endpoint)
             return key_info
 
-        # Free tier: 8 analyses per day (total across all endpoints)
-        daily_limit = settings.FREE_QUOTA_DAILY
-        usage = get_usage(api_key)
-        total_used = usage.get("total", 0)
+        # Monthly quota check
+        monthly_limit = PLAN_LIMITS.get(plan, 3)
+        monthly = get_monthly_usage(api_key)
+        total_this_month = monthly.get("total", 0)
 
-        if total_used >= daily_limit:
+        if total_this_month >= monthly_limit:
+            if plan == "free":
+                upgrade_msg = (
+                    f"Limite mensal atingido ({total_this_month}/{monthly_limit} análises). "
+                    "Faça upgrade para Starter (R$97/mês, 50 análises) ou Pro (R$297/mês, ilimitado)."
+                )
+            else:
+                upgrade_msg = (
+                    f"Limite mensal do plano {plan.title()} atingido ({total_this_month}/{monthly_limit}). "
+                    "Faça upgrade para Pro (R$297/mês, ilimitado)."
+                )
             raise HTTPException(
                 status_code=status.HTTP_429_TOO_MANY_REQUESTS,
-                detail=(
-                    f"Limite diário atingido ({total_used}/{daily_limit} análises hoje). "
-                    f"Volte amanhã ou gere uma API Key para trial Pro ilimitado de 7 dias."
-                ),
+                detail=upgrade_msg,
             )
 
         increment_usage(api_key, self.endpoint)
+        increment_monthly_usage(api_key, self.endpoint)
         return key_info

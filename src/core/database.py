@@ -292,3 +292,15 @@ def get_usage(api_key: str, db_path: Path = DB_PATH) -> dict[str, int]:
         if row:
             return dict(row)
         return {"mappings": 0, "dpias": 0, "dsrs": 0}
+
+
+def get_monthly_usage(api_key: str, db_path: Path = DB_PATH) -> dict[str, int]:
+    """Return current month usage with total for quota checking."""
+    usage = get_usage(api_key, db_path)
+    usage["total"] = usage.get("mappings", 0) + usage.get("dpias", 0) + usage.get("dsrs", 0)
+    return usage
+
+
+def increment_monthly_usage(api_key: str, endpoint: str, db_path: Path = DB_PATH) -> None:
+    """Increment monthly usage counter in the database."""
+    increment_usage(api_key, endpoint, db_path)

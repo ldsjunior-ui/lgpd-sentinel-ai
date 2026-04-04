@@ -11,10 +11,9 @@ from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, status
 import pandas as pd
 from io import StringIO
 
-from langchain_community.llms import Ollama
-
 from src.core.config import Settings, get_settings
 from src.core.database import save_mapping_audit
+from src.core.llm import get_llm
 from src.core.prompts import DATA_MAPPING_TEMPLATE
 from src.core.quota import QuotaCheck
 from src.models.schemas import (
@@ -69,26 +68,21 @@ async def map_data(
     context = request.context or "nao especificado"
 
     try:
-        llm = Ollama(
-            base_url=settings.OLLAMA_BASE_URL,
-            model=settings.OLLAMA_MODEL,
-            temperature=0.0,
-            num_predict=512,
-            num_ctx=2048,
-        )
+        llm = get_llm(num_predict=512)
         prompt = DATA_MAPPING_TEMPLATE.format(
             data_items=data_items_str,
             company_context=context,
         )
-        result = await llm.ainvoke(prompt)
+        raw = await llm.ainvoke(prompt)
+        result = raw.content if hasattr(raw, "content") else str(raw)
     except Exception as exc:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=f"Ollama nao disponivel: {exc}. Execute: ollama pull {settings.OLLAMA_MODEL}",
+            detail=f"LLM nao disponivel: {exc}",
         ) from exc
 
     # Parse LLM JSON output
-    analysis = _extract_json(str(result))
+    analysis = _extract_json(result)
     classificacoes = analysis.get("mapeamento", analysis.get("classificacoes", []))
 
     if not classificacoes:
@@ -96,7 +90,7 @@ async def map_data(
         logger.warning(
             "LLM output could not be parsed as structured JSON. Using regex fallback. "
             "Raw output (first 500 chars): %s",
-            str(result)[:500],
+            result[:500],
         )
         classificacoes = _classify_by_regex(request.data)
         compliance_score = 60.0

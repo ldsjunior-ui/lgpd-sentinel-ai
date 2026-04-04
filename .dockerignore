@@ -1,0 +1,16 @@
+.git
+.github
+.venv
+__pycache__
+*.pyc
+.env
+.env.*
+data/
+reports/
+*.db
+node_modules
+.DS_Store
+tests/
+frontend/
+desktop/
+docs/

@@ -40,7 +40,8 @@ class GenerateKeyResponse(BaseModel):
 
 
 class CheckoutRequest(BaseModel):
-    api_key: str = Field(..., description="API key existente para associar ao plano Pro")
+    api_key: str = Field(..., description="API key existente para associar ao plano")
+    plan: str = Field(default="starter", description="Plano desejado: 'starter' ou 'pro'")
 
 
 class PlanStatusResponse(BaseModel):
@@ -137,10 +138,22 @@ async def create_checkout(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail="Stripe não configurado. Defina STRIPE_SECRET_KEY no .env.",
         )
-    if not settings.STRIPE_PRICE_ID_PRO:
+    # Select price ID based on plan
+    plan = body.plan.lower()
+    if plan == "starter":
+        price_id = settings.STRIPE_PRICE_ID_STARTER
+    elif plan == "pro":
+        price_id = settings.STRIPE_PRICE_ID_PRO
+    else:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Plano inválido. Use 'starter' ou 'pro'.",
+        )
+
+    if not price_id:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="STRIPE_PRICE_ID_PRO não configurado no .env.",
+            detail=f"STRIPE_PRICE_ID_{plan.upper()} não configurado no .env.",
         )
 
     key_info = get_api_key(body.api_key)
@@ -155,13 +168,13 @@ async def create_checkout(
     try:
         session = stripe.checkout.Session.create(
             mode="subscription",
-            line_items=[{"price": settings.STRIPE_PRICE_ID_PRO, "quantity": 1}],
+            line_items=[{"price": price_id, "quantity": 1}],
             success_url=settings.STRIPE_SUCCESS_URL,
             cancel_url=settings.STRIPE_CANCEL_URL,
-            metadata={"api_key": body.api_key},
+            metadata={"api_key": body.api_key, "plan": plan},
             customer_email=key_info.get("email") or None,
         )
-        return {"checkout_url": session.url, "session_id": session.id}
+        return {"checkout_url": session.url, "session_id": session.id, "plan": plan}
     except stripe.StripeError as e:
         logger.error("Stripe error: %s", e)
         raise HTTPException(
@@ -196,20 +209,22 @@ async def stripe_webhook(
 
     if event["type"] == "checkout.session.completed":
         session = event["data"]["object"]
-        api_key = session.get("metadata", {}).get("api_key")
+        metadata = session.get("metadata", {})
+        api_key = metadata.get("api_key")
+        plan = metadata.get("plan", "pro")  # default pro for backwards compat
         if api_key:
             update_api_key_plan(
                 api_key=api_key,
-                plan="pro",
+                plan=plan,
                 stripe_customer_id=session.get("customer"),
                 stripe_subscription_id=session.get("subscription"),
             )
-            logger.info("Upgraded API key %s to Pro", api_key[:12] + "...")
+            logger.info("Upgraded API key %s to %s", api_key[:12] + "...", plan)
             # Enviar notificação de email ao dono do produto
             notify_new_subscriber(
                 customer_email=session.get("customer_email"),
                 api_key=api_key,
-                plan="pro",
+                plan=plan,
                 stripe_customer_id=session.get("customer"),
                 stripe_subscription_id=session.get("subscription"),
                 smtp_host=settings.SMTP_HOST,

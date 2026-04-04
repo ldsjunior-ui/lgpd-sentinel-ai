@@ -14,12 +14,12 @@ from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from fastapi.responses import Response
-from langchain_community.llms import Ollama
 
 from src.core.pdf_report import generate_dpia_pdf
 
 from src.core.config import Settings, get_settings
 from src.core.database import save_dpia_audit
+from src.core.llm import get_llm
 from src.core.prompts import DPIA_TEMPLATE, RISK_ASSESSMENT_TEMPLATE
 from src.core.quota import QuotaCheck
 from src.models.schemas import (
@@ -127,15 +127,8 @@ async def generate_dpia(
     )
 
     try:
-        llm = Ollama(
-            base_url=settings.OLLAMA_BASE_URL,
-            model=settings.OLLAMA_MODEL,
-            temperature=0.0,
-            num_predict=1024,
-            num_ctx=2048,
-        )
+        llm = get_llm(num_predict=1024)
 
-        # Format prompt with request data
         prompt = DPIA_TEMPLATE.format(
             treatment_description=request.treatment_description,
             data_types=", ".join(request.data_types) if request.data_types else "Nao especificado",
@@ -146,18 +139,19 @@ async def generate_dpia(
             ),
         )
 
-        logger.debug("Sending DPIA prompt to Ollama model: %s", settings.OLLAMA_MODEL)
-        llm_output = await llm.ainvoke(prompt)
+        logger.debug("Sending DPIA prompt to LLM")
+        raw = await llm.ainvoke(prompt)
+        llm_output = raw.content if hasattr(raw, "content") else str(raw)
 
     except Exception as exc:
-        logger.error("Ollama request failed: %s", exc)
+        logger.error("LLM request failed: %s", exc)
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=f"LLM service unavailable: {exc}. Ensure Ollama is running at {settings.OLLAMA_BASE_URL}",
+            detail=f"LLM service unavailable: {exc}",
         ) from exc
 
     # Parse LLM output
-    parsed = _extract_json(str(llm_output))
+    parsed = _extract_json(llm_output)
     ripd_data = parsed.get("ripd", parsed)
 
     # Calculate risk score from identified risks
@@ -216,8 +210,8 @@ async def generate_dpia(
         requires_anpd_consultation=conformidade.get("consulta_previa_anpd", False),
         anpd_consultation_reason=conformidade.get("justificativa_consulta"),
         generated_at=datetime.utcnow(),
-        model_used=settings.OLLAMA_MODEL,
-        raw_llm_output=str(llm_output) if settings.DEBUG else None,
+        model_used=settings.GROK_MODEL if settings.LLM_PROVIDER == "grok" else settings.OLLAMA_MODEL,
+        raw_llm_output=llm_output if settings.DEBUG else None,
     )
 
     # Save to history
@@ -280,22 +274,17 @@ async def quick_risk_assessment(
 ) -> dict[str, Any]:
     """Quick LGPD risk assessment without full DPIA report generation."""
     try:
-        llm = Ollama(
-            base_url=settings.OLLAMA_BASE_URL,
-            model=settings.OLLAMA_MODEL,
-            temperature=0.0,
-            num_predict=512,
-            num_ctx=2048,
-        )
+        llm = get_llm(num_predict=512)
         prompt = RISK_ASSESSMENT_TEMPLATE.format(
             data_summary=data_summary,
             security_measures=security_measures,
             incidents_history=incidents_history,
         )
-        output = await llm.ainvoke(prompt)
-        result = _extract_json(str(output))
+        raw = await llm.ainvoke(prompt)
+        output = raw.content if hasattr(raw, "content") else str(raw)
+        result = _extract_json(output)
         result["generated_at"] = datetime.utcnow().isoformat()
-        result["model_used"] = settings.OLLAMA_MODEL
+        result["model_used"] = settings.GROK_MODEL if settings.LLM_PROVIDER == "grok" else settings.OLLAMA_MODEL
         return result
 
     except Exception as exc:

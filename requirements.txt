@@ -10,11 +10,12 @@ python-multipart==0.0.9
 pydantic==2.7.1
 pydantic-settings==2.2.1
 
-# IA - LangChain + Ollama (inferência local gratuita)
-langchain==0.2.0
-langchain-community==0.2.0
-langchain-core==0.2.0
-ollama==0.2.0
+# IA - LangChain + Grok (xAI) + Ollama (fallback local)
+langchain>=0.2.0
+langchain-community>=0.2.0
+langchain-core>=0.2.0
+langchain-openai>=0.1.8
+ollama>=0.2.0
 
 # Banco de dados - Supabase (free tier)
 supabase==2.4.6

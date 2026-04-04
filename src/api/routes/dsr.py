@@ -14,10 +14,10 @@ from enum import Enum
 from typing import Any, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from langchain_community.llms import Ollama
 from pydantic import BaseModel, Field
 
 from src.core.config import Settings, get_settings
+from src.core.llm import get_llm
 from src.core.prompts import DSR_TEMPLATE
 from src.core.quota import QuotaCheck
 
@@ -113,29 +113,24 @@ async def analyze_dsr(
     )
 
     try:
-        llm = Ollama(
-            base_url=settings.OLLAMA_BASE_URL,
-            model=settings.OLLAMA_MODEL,
-            temperature=0.0,
-            num_predict=768,
-            num_ctx=2048,
-        )
+        llm = get_llm(num_predict=768)
         prompt = DSR_TEMPLATE.format(
             request_type=request.request_type.value,
             request_description=request.request_description,
             company_name=request.company_name or "Não informada",
             data_context=request.data_context or "Não especificado",
         )
-        llm_output = await llm.ainvoke(prompt)
+        raw = await llm.ainvoke(prompt)
+        llm_output = raw.content if hasattr(raw, "content") else str(raw)
 
     except Exception as exc:
-        logger.error("Ollama request failed: %s", exc)
+        logger.error("LLM request failed: %s", exc)
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail=f"LLM service unavailable: {exc}",
         ) from exc
 
-    parsed = _extract_json(str(llm_output))
+    parsed = _extract_json(llm_output)
     dsr_data = parsed.get("dsr", parsed)
 
     return DSRResponse(
@@ -154,7 +149,7 @@ async def analyze_dsr(
         justificativa_anpd=dsr_data.get("justificativa_anpd"),
         documentacao_necessaria=dsr_data.get("documentacao_necessaria", []),
         generated_at=datetime.utcnow(),
-        model_used=settings.OLLAMA_MODEL,
+        model_used=settings.GROK_MODEL if settings.LLM_PROVIDER == "grok" else settings.OLLAMA_MODEL,
     )
 
 

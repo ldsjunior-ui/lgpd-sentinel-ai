@@ -18,7 +18,8 @@ st.set_page_config(
     initial_sidebar_state="expanded",
 )
 
-API_BASE = "http://localhost:8000/api/v1"
+import os
+API_BASE = os.environ.get("API_BASE_URL", "https://lgpd-sentinel-ai.fly.dev/api/v1")
 
 # ─── Matrix Rain Background ───────────────────────────────────────────────────
 components.html("""
@@ -664,31 +665,101 @@ with tab4:
 
     with hist_tab1:
         if not mappings:
-            st.info("Nenhuma auditoria de mapeamento encontrada.")
+            st.info("Nenhuma auditoria de mapeamento encontrada. Execute um mapeamento na aba principal.")
         else:
             df_map = pd.DataFrame(mappings)
+            df_map["created_at"] = pd.to_datetime(df_map["created_at"], errors="coerce")
+
             # Filtro por empresa
             empresas = ["Todas"] + sorted(df_map["company"].dropna().unique().tolist())
             empresa_sel = st.selectbox("Filtrar por empresa", empresas, key="filter_map_company")
             if empresa_sel != "Todas":
                 df_map = df_map[df_map["company"] == empresa_sel]
 
-            for _, a in df_map.iterrows():
-                with st.expander(f"#{a['id']} — {a.get('company', 'N/A')} ({str(a.get('created_at', ''))[:10]})"):
-                    st.write(f"**Contexto:** {a.get('context', 'N/A')}")
-                    if st.button(f"Ver detalhes #{a['id']}", key=f"map_detail_{a['id']}"):
-                        try:
-                            dr = httpx.get(f"{API_BASE}/history/mapping/{a['id']}", timeout=5)
-                            if dr.status_code == 200:
-                                st.json(dr.json())
-                        except Exception as e:
-                            st.error(str(e))
+            # Tabela resumo
+            df_display = df_map[["id", "company", "context", "created_at"]].copy()
+            df_display.columns = ["ID", "Empresa", "Contexto", "Data"]
+            df_display["Data"] = df_display["Data"].dt.strftime("%d/%m/%Y %H:%M")
+            df_display["Contexto"] = df_display["Contexto"].fillna("—").apply(
+                lambda x: x[:80] + "..." if len(str(x)) > 80 else x
+            )
+            st.dataframe(
+                df_display,
+                use_container_width=True,
+                hide_index=True,
+                column_config={
+                    "ID": st.column_config.NumberColumn("ID", width="small"),
+                    "Empresa": st.column_config.TextColumn("Empresa", width="medium"),
+                    "Contexto": st.column_config.TextColumn("Contexto", width="large"),
+                    "Data": st.column_config.TextColumn("Data", width="medium"),
+                },
+            )
+
+            st.markdown("---")
+            st.markdown("##### Detalhes da auditoria")
+
+            # Seletor de auditoria para ver detalhes
+            audit_ids_map = df_map["id"].tolist()
+            audit_labels_map = [
+                f"#{row['id']} — {row.get('company', 'N/A')} ({str(row.get('created_at', ''))[:10]})"
+                for _, row in df_map.iterrows()
+            ]
+            selected_map_idx = st.selectbox(
+                "Selecione uma auditoria para ver detalhes",
+                range(len(audit_labels_map)),
+                format_func=lambda i: audit_labels_map[i],
+                key="select_map_detail",
+            )
+
+            if st.button("🔎 Carregar detalhes", key="btn_map_detail"):
+                audit_id = audit_ids_map[selected_map_idx]
+                try:
+                    dr = httpx.get(f"{API_BASE}/history/mapping/{audit_id}", timeout=10)
+                    if dr.status_code == 200:
+                        detail = dr.json()
+                        st.session_state["map_detail_data"] = detail
+                    else:
+                        st.error(f"Erro {dr.status_code}")
+                except Exception as e:
+                    st.error(f"Erro ao carregar: {e}")
+
+            if "map_detail_data" in st.session_state:
+                detail = st.session_state["map_detail_data"]
+                st.markdown(f"**Empresa:** {detail.get('company', 'N/A')}")
+                st.markdown(f"**Contexto:** {detail.get('context', 'N/A')}")
+                st.markdown(f"**Data:** {str(detail.get('created_at', ''))[:19]}")
+
+                # Mostrar itens analisados
+                items = detail.get("items", [])
+                if items:
+                    st.markdown("**Itens analisados:**")
+                    items_df = pd.DataFrame(items)
+                    st.dataframe(items_df, use_container_width=True, hide_index=True)
+
+                # Mostrar resultado
+                result = detail.get("result", {})
+                if result:
+                    rcol1, rcol2, rcol3 = st.columns(3)
+                    rcol1.metric("Itens", result.get("total_items", "—"))
+                    rcol2.metric("Dados sensíveis", result.get("sensitive_count", "—"))
+                    rcol3.metric("Risco geral", str(result.get("overall_risk", "—")).upper())
+
+                    recs = result.get("recommendations", [])
+                    if recs:
+                        st.markdown("**Recomendações:**")
+                        for rec in recs:
+                            st.markdown(f"- {rec}")
+
+                with st.expander("🔧 JSON completo"):
+                    st.json(detail)
 
     with hist_tab2:
         if not dpias:
-            st.info("Nenhuma auditoria DPIA encontrada.")
+            st.info("Nenhuma auditoria DPIA encontrada. Gere um DPIA na aba correspondente.")
         else:
             df_d = pd.DataFrame(dpias)
+            df_d["created_at"] = pd.to_datetime(df_d["created_at"], errors="coerce")
+
             # Filtros
             fc1, fc2 = st.columns(2)
             empresas_d = ["Todas"] + sorted(df_d["company"].dropna().unique().tolist())
@@ -702,23 +773,122 @@ with tab4:
             if risco_sel != "Todos":
                 df_d = df_d[df_d["risk_level"] == risco_sel]
 
-            for _, a in df_d.iterrows():
-                risk       = a.get("risk_level", "N/A")
-                risk_emoji = {"high": "🔴", "medium": "🟡", "low": "🟢"}.get(risk, "⚪")
-                score      = a.get("compliance_score", 0)
-                with st.expander(
-                    f"#{a['id']} {risk_emoji} — {a.get('company', 'N/A')} "
-                    f"| Score: {score:.0f}/100 | ({str(a.get('created_at', ''))[:10]})"
-                ):
-                    st.write(f"**Tratamento:** {a.get('treatment', 'N/A')}")
-                    st.progress(int(score) / 100)
-                    if st.button(f"Ver detalhes #{a['id']}", key=f"dpia_detail_{a['id']}"):
-                        try:
-                            dr = httpx.get(f"{API_BASE}/history/dpia/{a['id']}", timeout=5)
-                            if dr.status_code == 200:
-                                st.json(dr.json())
-                        except Exception as e:
-                            st.error(str(e))
+            # Tabela resumo
+            risk_labels = {"high": "🔴 Alto", "medium": "🟡 Médio", "low": "🟢 Baixo"}
+            df_d_display = df_d[["id", "company", "treatment", "risk_level", "compliance_score", "created_at"]].copy()
+            df_d_display.columns = ["ID", "Empresa", "Tratamento", "Risco", "Score", "Data"]
+            df_d_display["Data"] = df_d_display["Data"].dt.strftime("%d/%m/%Y %H:%M")
+            df_d_display["Risco"] = df_d_display["Risco"].map(risk_labels).fillna("⚪ N/A")
+            df_d_display["Score"] = df_d_display["Score"].apply(lambda x: f"{x:.0f}/100" if pd.notna(x) else "—")
+            df_d_display["Tratamento"] = df_d_display["Tratamento"].fillna("—").apply(
+                lambda x: x[:60] + "..." if len(str(x)) > 60 else x
+            )
+            st.dataframe(
+                df_d_display,
+                use_container_width=True,
+                hide_index=True,
+                column_config={
+                    "ID": st.column_config.NumberColumn("ID", width="small"),
+                    "Empresa": st.column_config.TextColumn("Empresa", width="medium"),
+                    "Tratamento": st.column_config.TextColumn("Tratamento", width="large"),
+                    "Risco": st.column_config.TextColumn("Risco", width="small"),
+                    "Score": st.column_config.TextColumn("Score", width="small"),
+                    "Data": st.column_config.TextColumn("Data", width="medium"),
+                },
+            )
+
+            st.markdown("---")
+            st.markdown("##### Detalhes da auditoria DPIA")
+
+            # Seletor de auditoria para ver detalhes
+            audit_ids_dpia = df_d["id"].tolist()
+            audit_labels_dpia = [
+                f"#{row['id']} — {row.get('company', 'N/A')} | "
+                f"{risk_labels.get(row.get('risk_level', ''), '⚪')} | "
+                f"Score: {row.get('compliance_score', 0):.0f}/100 | "
+                f"({str(row.get('created_at', ''))[:10]})"
+                for _, row in df_d.iterrows()
+            ]
+
+            if audit_labels_dpia:
+                selected_dpia_idx = st.selectbox(
+                    "Selecione uma auditoria DPIA para ver detalhes",
+                    range(len(audit_labels_dpia)),
+                    format_func=lambda i: audit_labels_dpia[i],
+                    key="select_dpia_detail",
+                )
+
+                if st.button("🔎 Carregar detalhes", key="btn_dpia_detail"):
+                    audit_id = audit_ids_dpia[selected_dpia_idx]
+                    try:
+                        dr = httpx.get(f"{API_BASE}/history/dpia/{audit_id}", timeout=10)
+                        if dr.status_code == 200:
+                            detail = dr.json()
+                            st.session_state["dpia_detail_data"] = detail
+                        else:
+                            st.error(f"Erro {dr.status_code}")
+                    except Exception as e:
+                        st.error(f"Erro ao carregar: {e}")
+
+                if "dpia_detail_data" in st.session_state:
+                    detail = st.session_state["dpia_detail_data"]
+                    st.markdown(f"**Empresa:** {detail.get('company', 'N/A')}")
+                    st.markdown(f"**Tratamento:** {detail.get('treatment', 'N/A')}")
+                    st.markdown(f"**Data:** {str(detail.get('created_at', ''))[:19]}")
+
+                    result = detail.get("result", {})
+                    if result:
+                        dcol1, dcol2, dcol3 = st.columns(3)
+                        risk_val = result.get("risk_level", detail.get("risk_level", "N/A"))
+                        risk_display = risk_labels.get(risk_val, str(risk_val).upper())
+                        score_val = result.get("compliance_score", detail.get("compliance_score", 0))
+                        dcol1.metric("Risco", risk_display)
+                        dcol2.metric("Score", f"{score_val:.0f}/100")
+                        dcol3.metric("Consulta ANPD", "Sim" if result.get("requires_anpd_consultation") else "Não")
+
+                        st.progress(min(int(score_val), 100) / 100)
+
+                        # Base legal
+                        legal = result.get("legal_basis", "")
+                        if legal:
+                            st.markdown(f"**Base legal:** {legal}")
+
+                        # Artigos aplicáveis
+                        articles = result.get("applicable_articles", [])
+                        if articles:
+                            st.markdown("**Artigos aplicáveis:** " + ", ".join(articles))
+
+                        # Riscos
+                        risks = result.get("risks", [])
+                        if risks:
+                            st.markdown("**Riscos identificados:**")
+                            if isinstance(risks[0], dict):
+                                risks_df = pd.DataFrame(risks)
+                                st.dataframe(risks_df, use_container_width=True, hide_index=True)
+                            else:
+                                for r_item in risks:
+                                    st.markdown(f"- {r_item}")
+
+                        # Medidas de mitigação
+                        measures = result.get("mitigation_measures", [])
+                        if measures:
+                            st.markdown("**Medidas de mitigação:**")
+                            if isinstance(measures[0], dict):
+                                measures_df = pd.DataFrame(measures)
+                                st.dataframe(measures_df, use_container_width=True, hide_index=True)
+                            else:
+                                for m_item in measures:
+                                    st.markdown(f"- {m_item}")
+
+                        # Recomendações
+                        recs = result.get("recommendations", [])
+                        if recs:
+                            st.markdown("**Recomendações:**")
+                            for rec in recs:
+                                st.markdown(f"- {rec}")
+
+                    with st.expander("🔧 JSON completo"):
+                        st.json(detail)
 
 
 # ═══════════════════════════════════════════════════════════════════════════════

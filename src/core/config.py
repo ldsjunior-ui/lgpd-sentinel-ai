@@ -50,11 +50,18 @@ class Settings(BaseSettings):
     # Production: only localhost. Use CORS_ORIGINS env var to override in dev.
     CORS_ORIGINS: list[str] = Field(default=["http://localhost:*", "https://localhost:*", "tauri://localhost"])
 
-    # Ollama / LLM settings (local inference, zero-cost)
-    OLLAMA_BASE_URL: str = Field(default="http://localhost:11434")
-    OLLAMA_MODEL: str = Field(default="mistral")
+    # LLM Provider: "grok" (xAI cloud) or "ollama" (local)
+    LLM_PROVIDER: str = Field(default="grok")
     LLM_TEMPERATURE: float = Field(default=0.0, ge=0.0, le=2.0)
     LLM_MAX_TOKENS: int = Field(default=4096)
+
+    # Grok (xAI) settings — cloud inference
+    XAI_API_KEY: Optional[str] = Field(default=None)
+    GROK_MODEL: str = Field(default="grok-3-mini-fast")
+
+    # Ollama settings (local inference, zero-cost fallback)
+    OLLAMA_BASE_URL: str = Field(default="http://localhost:11434")
+    OLLAMA_MODEL: str = Field(default="mistral")
 
     # Supabase settings (free tier, optional)
     SUPABASE_URL: Optional[str] = Field(default=None)
@@ -86,12 +93,18 @@ class Settings(BaseSettings):
     STRIPE_SUCCESS_URL: str = Field(default="http://localhost:8501?checkout=success")
     STRIPE_CANCEL_URL: str = Field(default="http://localhost:8501?checkout=cancel")
 
-    # Local quota limits (enforced locally, no external calls)
-    # Free plan: 8 total analyses per day (mapping + DPIA + DSR combined)
-    FREE_QUOTA_DAILY: int = Field(default=8)
-    FREE_QUOTA_MAPPINGS: int = Field(default=8)
-    FREE_QUOTA_DPIAS: int = Field(default=8)
-    FREE_QUOTA_DSRS: int = Field(default=8)
+    # Quota limits per plan
+    # Free: 3 analyses/month total
+    # Starter (R$97/mês): 50/month
+    # Pro (R$297/mês): unlimited
+    FREE_QUOTA_DAILY: int = Field(default=3)
+    FREE_QUOTA_MAPPINGS: int = Field(default=3)
+    FREE_QUOTA_DPIAS: int = Field(default=3)
+    FREE_QUOTA_DSRS: int = Field(default=3)
+    STARTER_QUOTA_MONTHLY: int = Field(default=50)
+
+    # Stripe price IDs for each plan
+    STRIPE_PRICE_ID_STARTER: Optional[str] = Field(default=None)
 
     # Email notifications (future: optional SMTP — NOT active by default)
     # Only used if user explicitly configures SMTP credentials.
