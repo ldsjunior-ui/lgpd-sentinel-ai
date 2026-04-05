@@ -22,10 +22,10 @@ RUN apt-get update && apt-get install -y \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Copiar e instalar dependências Python
-COPY requirements.txt .
+# Copiar e instalar dependências Python (backend)
+COPY requirements-backend.txt .
 RUN pip install --no-cache-dir --upgrade pip && \
-    pip install --no-cache-dir -r requirements.txt
+    pip install --no-cache-dir -r requirements-backend.txt
 
 # Copiar código fonte
 COPY . .
