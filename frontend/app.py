@@ -109,7 +109,7 @@ with st.sidebar:
 
     # Status da API
     try:
-        r = httpx.get(f"{api_url}/health", timeout=3)
+        r = httpx.get(f"{api_url}/health", timeout=15)
         if r.status_code == 200:
             st.success("✅ API Online")
             data = r.json()
