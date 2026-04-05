@@ -101,8 +101,9 @@ with st.sidebar:
     st.image("https://img.shields.io/badge/LGPD-Sentinel%20AI-blue?style=for-the-badge&logo=shield")
     st.markdown("---")
     st.markdown("### ⚙️ Configuração")
-    api_url = st.text_input("URL da API", value="http://localhost:8000")
-    API_BASE = f"{api_url}/api/v1"
+    default_api = os.environ.get("API_BASE_URL", "https://lgpd-sentinel-ai.fly.dev")
+    api_url = st.text_input("URL da API", value=default_api)
+    API_BASE = f"{api_url}/api/v1" if not api_url.endswith("/api/v1") else api_url
 
     st.markdown("---")
 
