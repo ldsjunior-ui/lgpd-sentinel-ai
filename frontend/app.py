@@ -4,7 +4,7 @@ Frontend visual para auditorias LGPD automatizadas
 """
 
 import streamlit as st
-import streamlit.components.v1 as components
+from streamlit.components.v1 import html as st_html
 import httpx
 import json
 import pandas as pd
@@ -22,7 +22,7 @@ import os
 API_BASE = os.environ.get("API_BASE_URL", "https://lgpd-sentinel-ai.fly.dev/api/v1")
 
 # ─── Matrix Rain Background ───────────────────────────────────────────────────
-components.html("""
+st_html("""
 <script>
 (function() {
   var parent = window.parent.document;
@@ -224,37 +224,37 @@ with tab1:
         st.markdown("**Itens de dados coletados**")
 
         # Itens dinâmicos
-        if "items" not in st.session_state:
-            st.session_state.items = [{"name": "", "description": "", "source": ""}]
+        if "data_items" not in st.session_state:
+            st.session_state.data_items = [{"name": "", "description": "", "source": ""}]
 
-        for i, item in enumerate(st.session_state.items):
+        for i, item in enumerate(st.session_state.data_items):
             with st.expander(f"Item {i+1}: {item['name'] or 'Novo item'}", expanded=(i == 0)):
                 c1, c2, c3 = st.columns(3)
-                st.session_state.items[i]["name"] = c1.text_input(
+                st.session_state.data_items[i]["name"] = c1.text_input(
                     "Nome do campo", value=item["name"], key=f"name_{i}",
                     placeholder="ex: email"
                 )
-                st.session_state.items[i]["description"] = c2.text_input(
+                st.session_state.data_items[i]["description"] = c2.text_input(
                     "Descrição", value=item["description"], key=f"desc_{i}",
                     placeholder="ex: e-mail do cliente"
                 )
-                st.session_state.items[i]["source"] = c3.text_input(
+                st.session_state.data_items[i]["source"] = c3.text_input(
                     "Origem", value=item["source"], key=f"src_{i}",
                     placeholder="ex: formulário de cadastro"
                 )
                 if i > 0 and st.button("🗑️ Remover", key=f"rem_{i}"):
-                    st.session_state.items.pop(i)
+                    st.session_state.data_items.pop(i)
                     st.rerun()
 
         if st.button("➕ Adicionar item"):
-            st.session_state.items.append({"name": "", "description": "", "source": ""})
+            st.session_state.data_items.append({"name": "", "description": "", "source": ""})
             st.rerun()
 
     with col2:
         st.subheader("🔎 Resultado da análise")
 
         if st.button("🚀 Analisar Dados", type="primary", use_container_width=True):
-            items_validos = [i for i in st.session_state.items if i["name"].strip()]
+            items_validos = [i for i in st.session_state.data_items if i["name"].strip()]
             if not items_validos:
                 st.error("Adicione pelo menos um item de dado.")
             else:
