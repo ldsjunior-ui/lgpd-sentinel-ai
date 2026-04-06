@@ -120,8 +120,7 @@ async def analyze_dsr(
             company_name=request.company_name or "Não informada",
             data_context=request.data_context or "Não especificado",
         )
-        raw = await llm.ainvoke(prompt)
-        llm_output = raw.content if hasattr(raw, "content") else str(raw)
+        llm_output = await llm.ainvoke(prompt)
 
     except Exception as exc:
         logger.error("LLM request failed: %s", exc)

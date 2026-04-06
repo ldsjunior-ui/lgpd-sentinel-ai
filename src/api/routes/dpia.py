@@ -140,8 +140,7 @@ async def generate_dpia(
         )
 
         logger.debug("Sending DPIA prompt to LLM")
-        raw = await llm.ainvoke(prompt)
-        llm_output = raw.content if hasattr(raw, "content") else str(raw)
+        llm_output = await llm.ainvoke(prompt)
 
     except Exception as exc:
         logger.error("LLM request failed: %s", exc)
@@ -280,8 +279,7 @@ async def quick_risk_assessment(
             security_measures=security_measures,
             incidents_history=incidents_history,
         )
-        raw = await llm.ainvoke(prompt)
-        output = raw.content if hasattr(raw, "content") else str(raw)
+        output = await llm.ainvoke(prompt)
         result = _extract_json(output)
         result["generated_at"] = datetime.utcnow().isoformat()
         result["model_used"] = settings.GROK_MODEL if settings.LLM_PROVIDER == "grok" else settings.OLLAMA_MODEL

@@ -73,8 +73,7 @@ async def map_data(
             data_items=data_items_str,
             company_context=context,
         )
-        raw = await llm.ainvoke(prompt)
-        result = raw.content if hasattr(raw, "content") else str(raw)
+        result = await llm.ainvoke(prompt)
     except Exception as exc:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,

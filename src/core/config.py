@@ -59,6 +59,10 @@ class Settings(BaseSettings):
     XAI_API_KEY: Optional[str] = Field(default=None)
     GROK_MODEL: str = Field(default="grok-3-mini-fast")
 
+    # Groq settings — free tier fallback (30 req/min)
+    GROQ_API_KEY: Optional[str] = Field(default=None)
+    GROQ_MODEL: str = Field(default="llama-3.1-8b-instant")
+
     # Ollama settings (local inference, zero-cost fallback)
     OLLAMA_BASE_URL: str = Field(default="http://localhost:11434")
     OLLAMA_MODEL: str = Field(default="mistral")
