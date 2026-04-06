@@ -1,0 +1,53 @@
+{
+  "date": "2026-03-22",
+  "meals": {
+    "rice_addition": {
+      "description": "Arroz cozido",
+      "weight_g": 130,
+      "protein_g": 3,
+      "carbs_g": 36,
+      "fat_g": 0.5,
+      "calories_kcal": 165
+    }
+  },
+  "daily_totals": {
+    "intake": {
+      "calories_kcal": 1622,
+      "protein_g": 180,
+      "carbs_g": 109,
+      "fat_g": 47.5
+    },
+    "tef": {
+      "protein_kcal": 180,
+      "carbs_kcal": 30,
+      "fat_kcal": 13,
+      "total_kcal": 223
+    },
+    "net_intake_kcal": 1399
+  },
+  "expenditure": {
+    "bmr_kcal": 2200,
+    "training_kcal": 1160,
+    "epoc_kcal": 93,
+    "caffeine_kcal": 160,
+    "neat_kcal": 200,
+    "tdee_kcal": 3813
+  },
+  "thermogenesis": {
+    "caffeine_kcal": 160,
+    "epoc_kcal": 93,
+    "tef_kcal": 223,
+    "total_kcal": 476
+  },
+  "deficit_kcal": -2414,
+  "estimated_fat_burn_g": {
+    "min": 260,
+    "max": 300
+  },
+  "analysis": {
+    "protein_status": "PERFEITO - 180g para preservacao maxima de massa magra",
+    "carbs_status": "Upgrade estrategico: 73g -> 109g, melhora leptina e recuperacao",
+    "deficit_status": "Deficit muito alto mas sustentavel metabolicamente",
+    "metabolic_efficiency": "altissima"
+  }
+}
