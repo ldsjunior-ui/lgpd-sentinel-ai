@@ -82,12 +82,19 @@ async def health_check():
 @app.get("/", tags=["Sistema"])
 async def root():
     """Informações gerais da API."""
+    import os
+    from src.core.config import get_settings
+    s = get_settings()
     return {
         "name": "LGPD Sentinel AI",
         "description": "Audits LGPD automatizados com IA open source",
         "docs": "/docs",
         "health": "/health",
-        "version": "0.1.0"
+        "version": "0.1.0",
+        "llm_provider": s.LLM_PROVIDER,
+        "groq_key_set": bool(s.GROQ_API_KEY),
+        "xai_key_set": bool(s.XAI_API_KEY),
+        "groq_env": bool(os.environ.get("GROQ_API_KEY")),
     }
 
 
