@@ -17,6 +17,85 @@
 
 </div>
 
+
+---
+
+## Building AI course project
+
+This repository is my **Building AI course project** for the Elements of AI course.
+
+## Summary
+
+LGPD Sentinel AI helps Brazilian organizations identify personal-data risks, draft compliance documents, and handle data-subject requests. It can use local AI to reduce repetitive analysis while keeping sensitive data under the user's control.
+
+## Background
+
+Brazilian organizations must understand what personal data they collect, why it is processed, how it is protected, and how requests from data subjects should be handled.
+
+For small and medium-sized organizations, this work is often manual, repetitive, expensive, and dependent on specialized legal knowledge. Incomplete data inventories and inconsistent documentation can also create compliance and security risks.
+
+I created LGPD Sentinel AI to explore how artificial intelligence can support privacy professionals, developers, and small businesses with the operational parts of LGPD compliance. The project combines my experience in law and software development.
+
+The problem is important because organizations process personal data every day, while mistakes can affect the privacy and rights of employees, customers, and other individuals.
+
+## Data and AI techniques
+
+The system works with information supplied by the organization, including:
+
+* Categories of personal and sensitive data
+* Purpose and legal basis of processing
+* Retention periods and security measures
+* Descriptions of internal processing activities
+* Requests submitted by data subjects
+
+The current implementation uses natural language processing with large language models orchestrated through LangChain. The self-hosted workflow can run models locally through Ollama. AI is used to classify information, identify possible risks, draft compliance documents, and analyze data-subject requests. Structured application logic handles validation, history, API access, and PDF generation.
+
+The project does not train a model on personal data. Its results depend on the quality and completeness of the information supplied by the user. Legal knowledge should be checked against authoritative sources, especially the [Brazilian General Data Protection Law](https://www.planalto.gov.br/ccivil_03/_ato2015-2018/2018/lei/l13709compilado.htm) and [guidance published by the ANPD](https://www.gov.br/anpd/pt-br/centrais-de-conteudo/materiais-educativos-e-publicacoes).
+
+## How is it used?
+
+A privacy professional, lawyer, compliance analyst, consultant, or developer enters information about an organization's data-processing activities. The system can then help the user:
+
+1. Map and classify personal data.
+2. Identify possible privacy and compliance risks.
+3. Draft a DPIA/RIPD document.
+4. Analyze a data-subject request.
+5. Export reports for review and record keeping.
+
+The primary users are professionals responsible for privacy and compliance. The people affected also include employees, customers, and other data subjects whose information appears in the analyzed processes.
+
+The generated results are decision-support material. A qualified human must review them before they are used in legal, compliance, or operational decisions.
+
+## Challenges
+
+LGPD Sentinel AI does not replace a lawyer, DPO, or privacy specialist. Large language models may produce incorrect interpretations, outdated information, or confident statements without sufficient legal support. Incomplete input can also lead to incomplete recommendations.
+
+Sensitive organizational information must be protected against unauthorized access. A production deployment therefore needs strong access controls, encryption, audit logs, data minimization, retention rules, and clear information about whether a local or cloud model is being used.
+
+Human review, explainable outputs, source citations, and continuous evaluation are necessary to prevent false confidence and reduce legal and privacy risks.
+
+## What next?
+
+Future development may include:
+
+* Retrieval-augmented generation using a versioned collection of official LGPD and ANPD documents
+* Direct citations showing the source behind each recommendation
+* Evaluation datasets reviewed by privacy professionals
+* Hallucination, security, and adversarial testing
+* Integrations with organizational systems
+* Support for other privacy frameworks, such as GDPR
+* Stronger multi-tenant access controls and audit trails
+
+## Acknowledgments
+
+This project was developed by Leonardo Bergonzi as an open-source experiment in practical AI-assisted privacy compliance.
+
+The project is based on the Brazilian LGPD, guidance published by the ANPD, and open-source technologies including Python, FastAPI, Streamlit, LangChain, Ollama, ReportLab, and Docker.
+
+The course project structure follows the [Elements of AI Building AI final project instructions](https://buildingai.elementsofai.com/Conclusion/your-ai-idea).
+
+Project repository: https://github.com/ldsjunior-ui/lgpd-sentinel-ai
+
 Substitua dias de trabalho manual por minutos. O LGPD Sentinel AI gera **Data Mapping**, **RIPD/DPIA**, analisa **direitos dos titulares** e exporta relatórios em PDF — tudo rodando com IA 100% local via Ollama.
 
 **Ideal para:** DPOs, jurídico, compliance, consultorias e times de desenvolvimento.
